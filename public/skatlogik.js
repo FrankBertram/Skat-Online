@@ -284,6 +284,7 @@
     t.stichZahl = new Array(t.plaetze).fill(0);
     t.kartenAnzahl = welt.haende.map(h => h.length);
     t.offeneKarten = null;
+    t.anspruch = null;
     t.ergebnis = null;
     t.log = 'Spiel ' + t.spielNr + ': ' + name(t, t.geber) + ' hat gegeben' +
       (t.plaetze === 4 ? ' und setzt aus' : '');
@@ -371,6 +372,7 @@
     const t = welt.tisch;
     t.amZug = null;
     t.offeneKarten = null;
+    t.anspruch = null;
     if (t.maxSpiele > 0 && t.spielNr >= t.maxSpiele) {
       t.phase = 'beendet';
       t.status = 'beendet';
@@ -434,6 +436,7 @@
   function karteSpielen(welt, platz, karte) {
     const t = welt.tisch;
     if (t.phase !== 'spielen') fehler('Es wird gerade nicht gespielt.');
+    if (t.anspruch) fehler('Erst über die gezeigten Karten entscheiden.');
     if (platz !== t.amZug) fehler('Du bist nicht am Zug.');
     const hand = welt.haende[platz];
     if (!hand.includes(karte)) fehler('Diese Karte hast du nicht.');
@@ -460,15 +463,72 @@
     if (t.stichNr >= 10 || (art === 'null' && g === t.alleinspieler)) abrechnen(welt);
   }
 
+  // ── Karten zeigen (Rest beanspruchen) und Aufgabe ──────────────
+  // Alle noch nicht gewerteten Karten (Hände + angefangener Stich) einer Partei
+  // zuschlagen; der angefangene Stich zählt als Stich.
+  function restVerteilen(welt, anAllein) {
+    const t = welt.tisch, g = welt.geheim;
+    let karten = t.stich.map(x => x.karte);
+    t.aktive.forEach(p => { karten = karten.concat(welt.haende[p]); welt.haende[p] = []; t.kartenAnzahl[p] = 0; });
+    const restStiche = 10 - t.stichNr;
+    const a = augen(karten);
+    const gegner = t.aktive.filter(p => p !== t.alleinspieler);
+    if (anAllein) { g.augenAllein += a; t.stichZahl[t.alleinspieler] += restStiche; }
+    else { g.augenGegner += a; t.stichZahl[gegner[0]] += restStiche; }
+    t.stich = [];
+    t.stichNr = 10;
+  }
+
+  function kartenZeigen(welt, platz) {
+    const t = welt.tisch;
+    if (t.phase !== 'spielen' || platz !== t.alleinspieler) fehler('Nur der Alleinspieler kann seine Karten zeigen.');
+    if (t.anspruch) fehler('Die Karten sind bereits gezeigt.');
+    t.anspruch = { von: platz, zustimmung: [] };
+    t.offeneKarten = sortiereHand(welt.haende[platz], t.spiel.art);
+    t.log = name(t, platz) + ' zeigt die Karten und ' +
+      (t.spiel.art === 'null' ? 'beansprucht, keinen Stich mehr zu bekommen' : 'beansprucht alle restlichen Stiche');
+  }
+
+  function anspruchBeantworten(welt, platz, ja) {
+    const t = welt.tisch;
+    if (!t.anspruch) fehler('Es wurden keine Karten gezeigt.');
+    if (!t.aktive.includes(platz) || platz === t.alleinspieler) fehler('Nur die Gegenspieler entscheiden über die gezeigten Karten.');
+    if (t.anspruch.zustimmung.includes(platz)) fehler('Du hast bereits zugestimmt.');
+    if (!ja) {
+      t.anspruch = null;   // Karten bleiben offen liegen, es wird weitergespielt
+      t.log = name(t, platz) + ' ist nicht einverstanden – es wird weitergespielt';
+      return;
+    }
+    t.anspruch.zustimmung = t.anspruch.zustimmung.concat([platz]);
+    t.log = name(t, platz) + ' ist einverstanden';
+    if (t.anspruch.zustimmung.length < 2) return;
+    const allein = t.alleinspieler;
+    restVerteilen(welt, t.spiel.art !== 'null');   // Null: Rest an die Gegenspieler
+    t.ergebnisZusatz = 'Rest beansprucht';
+    t.log = name(t, allein) + ': Rest beansprucht';
+    abrechnen(welt);
+  }
+
+  function aufgeben(welt, platz) {
+    const t = welt.tisch;
+    if (t.phase !== 'spielen' || platz !== t.alleinspieler) fehler('Nur der Alleinspieler kann aufgeben.');
+    // Aufgabe vor dem ersten Ausspiel: einfach verloren (ohne Schneider/Schwarz, außer angesagt)
+    t.aufgabeEinfach = t.stichNr === 0 && t.stich.length === 0;
+    restVerteilen(welt, false);
+    t.aufgegeben = true;
+    abrechnen(welt);
+  }
+
   // ── Abrechnung ──────────────────────────────────────────────────
   // Liefert das Ergebnis eines beendeten Spiels (auch für Tests nutzbar)
   function bewerte(o) {
     // o = { art, hand, schneiderAngesagt, schwarzAngesagt, ouvert, reizwert,
-    //       augenAllein, sticheAllein, alleinStichBekommen (Null), spitzen }
+    //       augenAllein, sticheAllein, alleinStichBekommen (Null), spitzen,
+    //       aufgegeben, einfach (Aufgabe vor dem ersten Ausspiel) }
     const r = { ueberreizt: false, schneider: false, schwarz: false };
     if (o.art === 'null') {
       const nw = nullWert(o.hand, o.ouvert);
-      r.gewonnen = !o.alleinStichBekommen;
+      r.gewonnen = !o.alleinStichBekommen && !o.aufgegeben;
       r.wert = nw;
       if (o.reizwert > nw) {
         r.gewonnen = false; r.ueberreizt = true;
@@ -480,7 +540,8 @@
     const aa = o.augenAllein;
     r.schneider = aa >= 90 || aa <= 30;
     r.schwarz = o.sticheAllein === 10 || o.sticheAllein === 0;
-    r.gewonnen = aa >= 61;
+    r.gewonnen = aa >= 61 && !o.aufgegeben;
+    if (o.einfach) { r.schneider = false; r.schwarz = false; }
     if (o.schneiderAngesagt && aa < 90) r.gewonnen = false;
     if (o.schwarzAngesagt && o.sticheAllein < 10) r.gewonnen = false;
     let faktor = o.spitzen.anzahl + 1;
@@ -518,7 +579,8 @@
       art: s.art, hand: s.hand, schneiderAngesagt: s.schneiderAngesagt,
       schwarzAngesagt: s.schwarzAngesagt, ouvert: s.ouvert, reizwert: t.reizwert,
       augenAllein: g.augenAllein, sticheAllein: t.stichZahl[allein],
-      alleinStichBekommen: t.stichZahl[allein] > 0, spitzen: g.spitzen
+      alleinStichBekommen: t.stichZahl[allein] > 0, spitzen: g.spitzen,
+      aufgegeben: !!t.aufgegeben, einfach: !!(t.aufgegeben && t.aufgabeEinfach)
     });
     const punkte = seegerPunkte(t.plaetze, allein, r.wert, r.gewonnen);
     let text = spielText(s);
@@ -528,6 +590,9 @@
       else if (!s.schneiderAngesagt && r.schneider) text += ' Schneider';
     }
     if (r.ueberreizt) text += ' – überreizt';
+    if (t.aufgegeben) text += ' – aufgegeben';
+    else if (t.ergebnisZusatz) text += ' – ' + t.ergebnisZusatz;
+    t.aufgegeben = false; t.aufgabeEinfach = false; t.ergebnisZusatz = null;
     t.ergebnis = {
       eingepasst: false,
       alleinspieler: allein,
@@ -589,6 +654,9 @@
       case 'aufnehmen': skatAufnehmen(welt, platz); break;
       case 'ansagen': ansagen(welt, platz, a); break;
       case 'karte': karteSpielen(welt, platz, String(a.karte || '')); break;
+      case 'zeigen': kartenZeigen(welt, platz); break;
+      case 'zustimmen': anspruchBeantworten(welt, platz, a.ja === true); break;
+      case 'aufgeben': aufgeben(welt, platz); break;
       case 'weiter': naechstesSpiel(welt); break;
       default: fehler('Unbekannte Aktion: ' + a.typ);
     }

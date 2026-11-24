@@ -79,6 +79,11 @@
   .spielwahl button.gewaehlt { background: var(--gold); border-color: #8a6414; font-weight: 700; }
   .aktionen label { font-size: 15px; text-shadow: 0 1px 2px #000; }
   .meinbereich { grid-column: 1 / -1; grid-row: 4; text-align: center; }
+  .handzeile { display: flex; align-items: center; justify-content: center; gap: 10px; }
+  .sortierung { display: grid; grid-template-columns: repeat(2, auto); gap: 3px; align-content: center; }
+  .sortierung .titel { grid-column: 1 / -1; font-size: 11px; opacity: .85; text-shadow: 0 1px 2px #000; }
+  .sortierung button { padding: 2px 6px; font-size: 13px; min-width: 50px; background: rgba(255,255,255,.88); border-radius: 6px; }
+  .sortierung button.aktiv { background: var(--gold); border-color: #8a6414; font-weight: 700; }
   .meinbereich .nm { font-weight: 700; }
   .meinbereich.amzug .hand { background: rgba(227,179,65,.18); border-radius: 14px; }
   .hand { display: flex; justify-content: center; flex-wrap: nowrap; padding: 16px 6px 4px; min-height: calc(var(--kb) * 1.53 + 20px); }
@@ -267,6 +272,7 @@ let tischId = null;
 let beschaeftigt = false;
 let auswahlDruecken = [];  // beim Drücken gewählte Karten
 let gewaehlteArt = null;   // Spielart in der Ansage
+let sortierArt = null;     // vom Spieler gewählte Sortierung (null = automatisch)
 let optionen = { schneider: false, schwarz: false, ouvert: false };
 let letzterStichNr = 0, zeigeStichBis = 0;
 let abmeldenTisch = () => {};
@@ -355,10 +361,12 @@ function positionen() {
   else { pos[(ich + 1) % 3] = 'links'; pos[(ich + 2) % 3] = 'rechts'; }
   return pos;
 }
+// Sortierung der eigenen Hand: eigene Wahl, sonst angesagtes Spiel, sonst Wahl in der Ansage, sonst Grand
 function aktuelleArt() {
+  if (sortierArt) return sortierArt;
   if (tisch.spiel) return tisch.spiel.art;
-  if (tisch.phase === 'druecken' && gewaehlteArt) return gewaehlteArt;
-  return null;
+  if ((tisch.phase === 'druecken' || tisch.phase === 'skataufnahme') && gewaehlteArt) return gewaehlteArt;
+  return 'grand';
 }
 
 // ── Rendering ───────────────────────────────────────────────────────
@@ -448,8 +456,8 @@ function renderMitte(pos) {
   $('mitte').innerHTML = h;
 }
 
-function knopf(text, daten, klasse = '') {
-  return `<button class="${klasse}" data-aktion='${esc(JSON.stringify(daten))}' ${beschaeftigt ? 'disabled' : ''}>${text}</button>`;
+function knopf(text, daten, klasse = '', rueckfrage = '') {
+  return `<button class="${klasse}" data-aktion='${esc(JSON.stringify(daten))}' ${rueckfrage ? `data-rueckfrage="${esc(rueckfrage)}"` : ''} ${beschaeftigt ? 'disabled' : ''}>${text}</button>`;
 }
 
 function renderAktionen(ich) {
@@ -498,7 +506,31 @@ function renderAktionen(ich) {
       h = `<div class="frage">Wähle 2 Karten zum Drücken (${auswahlDruecken.length}/2) und sage dein Spiel an.</div>` + ansageHTML(false);
     } else h = `<div class="frage">${esc(nameVon(t.alleinspieler))} hat den Skat aufgenommen und drückt.</div>`;
   } else if (t.phase === 'spielen') {
-    if (amZug) h = `<div class="frage">Du bist am Zug – spiele eine Karte.</div>`;
+    const allein = t.alleinspieler;
+    const istNull = t.spiel.art === 'null';
+    if (t.anspruch) {
+      const was = istNull ? 'keinen Stich mehr zu bekommen' : 'alle restlichen Stiche';
+      const gegner = ich >= 0 && t.aktive.includes(ich) && ich !== allein;
+      if (gegner && !t.anspruch.zustimmung.includes(ich)) {
+        h = `<div class="frage">${esc(nameVon(allein))} zeigt die Karten und beansprucht ${was}. Einverstanden?</div><div class="knoepfe">` +
+          knopf('Einverstanden', { typ: 'zustimmen', ja: true }, 'primaer') +
+          knopf('Nicht einverstanden – weiterspielen', { typ: 'zustimmen', ja: false }, 'gefahr') + '</div>';
+      } else {
+        h = `<div class="frage">${esc(nameVon(allein))} zeigt die Karten und beansprucht ${was} – warte auf die Gegenspieler (${t.anspruch.zustimmung.length}/2 einverstanden).</div>`;
+      }
+    } else {
+      if (amZug) h = `<div class="frage">Du bist am Zug – spiele eine Karte.</div>`;
+      if (ich === allein) {
+        h += `<div class="knoepfe">` +
+          knopf('🃏 Karten zeigen', { typ: 'zeigen' }, '',
+            istNull ? 'Karten zeigen und beanspruchen, keinen Stich mehr zu bekommen? Die Gegenspieler müssen zustimmen.'
+                    : 'Karten zeigen und alle restlichen Stiche beanspruchen? Die Gegenspieler müssen zustimmen.') +
+          knopf('🏳 Aufgeben', { typ: 'aufgeben' }, 'gefahr',
+            'Spiel wirklich aufgeben? Es zählt als verloren' +
+            (t.stichNr === 0 && t.stich.length === 0 ? ' (vor dem ersten Ausspiel: einfach, ohne Schneider).' : ', die restlichen Karten gehen an die Gegenspieler.')) +
+          `</div>`;
+      }
+    }
   } else if (t.phase === 'spielende') {
     h = `<div class="frage">Spiel ${t.spielNr} beendet.</div>`;
     if (ich >= 0) h += `<div class="knoepfe">${knopf('Nächstes Spiel geben', { typ: 'weiter' }, 'primaer')}</div>`;
@@ -508,7 +540,10 @@ function renderAktionen(ich) {
   el.innerHTML = h;
 
   el.querySelectorAll('button[data-aktion]').forEach(b => {
-    b.onclick = () => aktion(JSON.parse(b.dataset.aktion));
+    b.onclick = () => {
+      if (b.dataset.rueckfrage && !confirm(b.dataset.rueckfrage)) return;
+      aktion(JSON.parse(b.dataset.aktion));
+    };
   });
   const sel = $('reizAuswahl');
   if (sel) sel.onchange = () => { if (sel.value) aktion({ typ: 'sagen', wert: parseInt(sel.value, 10) }); };
@@ -533,7 +568,7 @@ function ansageHTML(hand) {
 
 function verbindeAnsage() {
   document.querySelectorAll('[data-art]').forEach(b => {
-    b.onclick = () => { gewaehlteArt = b.dataset.art; render(); };
+    b.onclick = () => { gewaehlteArt = b.dataset.art; sortierArt = b.dataset.art; render(); };
   });
   document.querySelectorAll('[data-opt]').forEach(c => {
     c.onchange = () => { optionen[c.dataset.opt] = c.checked; };
@@ -587,7 +622,12 @@ function renderMeinBereich(ich) {
     if (druecken && auswahlDruecken.includes(k)) kl += ' gewaehlt';
     return karteHTML(k, kl);
   }).join('');
-  el.innerHTML = `<div class="hand ${druecken ? 'waehlbar' : ''}" id="meineHand">${hand}</div><div>${kopf}</div>`;
+  const sortKnoepfe = [['grand', 'Grand'], ['null', 'Null'], ['kreuz', '<span class="mini f-c">♣</span>'], ['pik', '<span class="mini f-s">♠</span>'],
+    ['herz', '<span class="mini f-h">♥</span>'], ['karo', '<span class="mini f-d">♦</span>']]
+    .map(([a, txt]) => `<button data-sort="${a}" class="${art === a ? 'aktiv' : ''}" title="Hand sortieren wie ${S.SPIELARTEN[a].name}">${txt}</button>`).join('');
+  const sortierung = meineKarten.length ? `<div class="sortierung"><span class="titel">Sortieren</span>${sortKnoepfe}</div>` : '';
+  el.innerHTML = `<div class="handzeile"><div class="hand ${druecken ? 'waehlbar' : ''}" id="meineHand">${hand}</div>${sortierung}</div><div>${kopf}</div>`;
+  el.querySelectorAll('[data-sort]').forEach(b => b.onclick = () => { sortierArt = b.dataset.sort; render(); });
   el.classList.toggle('amzug', t.amZug === ich);
   $('meineHand').querySelectorAll('.karte').forEach(kEl => {
     kEl.onclick = () => {
@@ -682,7 +722,9 @@ function tischGeaendert(neu) {
     letzteSpielNr = neu.spielNr;
     gewaehlteArt = null; auswahlDruecken = [];
     optionen = { schneider: false, schwarz: false, ouvert: false };
+    sortierArt = null;
   }
+  if (neu.spiel && (!alt || !alt.spiel || alt.spielNr !== neu.spielNr)) sortierArt = null;
   render();
   // Wird man am Zug, die eigene Hand ins Bild holen (nur falls sie nicht ganz sichtbar ist)
   const ich = meinPlatz();
@@ -701,7 +743,9 @@ function starteDemo() {
   ['Anna', 'Bernd', 'Carla', 'Dieter'].slice(0, plaetze).forEach((nm, i) => S.beitreten(welt, 'demo' + i, nm, i));
   let ansicht = 0, folgen = true;
   const aktualisieren = () => {
-    if (folgen && welt.tisch.amZug != null) ansicht = welt.tisch.amZug;
+    const t = welt.tisch;
+    if (folgen && t.anspruch) ansicht = t.aktive.find(p => p !== t.alleinspieler && !t.anspruch.zustimmung.includes(p));
+    else if (folgen && t.amZug != null) ansicht = t.amZug;
     uid = 'demo' + ansicht;
     meineKarten = welt.haende[ansicht].slice();
     leiste();

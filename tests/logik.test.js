@@ -195,3 +195,85 @@ test('Reizen: MH sagt, VH hält, HH reizt höher', () => {
   assert.strictEqual(welt.haende[hh].length, 10);
   assert.strictEqual(welt.tisch.amZug, vh);
 });
+
+// ── Karten zeigen und Aufgabe ─────────────────────────────────────
+function spielBisAnsage(art, druecken = true) {
+  const welt = S.neuerTisch({ plaetze: 4 });
+  for (let i = 0; i < 4; i++) S.beitreten(welt, 'u' + i, 'S' + i, i);
+  S.aktion(welt, 0, { typ: 'starten' });
+  const [vh, mh, hh] = welt.tisch.aktive;
+  S.aktion(welt, mh, { typ: 'passe' });
+  S.aktion(welt, hh, { typ: 'passe' });
+  S.aktion(welt, vh, { typ: 'ja' });
+  if (druecken) {
+    S.aktion(welt, vh, { typ: 'aufnehmen' });
+    S.aktion(welt, vh, { typ: 'ansagen', art, druecken: welt.haende[vh].slice(0, 2) });
+  } else S.aktion(welt, vh, { typ: 'ansagen', art });
+  return { welt, vh, mh, hh };
+}
+function spieleKarten(welt, n) {
+  for (let i = 0; i < n; i++) {
+    const t = welt.tisch, p = t.amZug;
+    S.aktion(welt, p, { typ: 'karte', karte: S.gueltigeKarten(welt.haende[p], t.stich, t.spiel.art)[0] });
+  }
+}
+
+test('Karten zeigen: beide Gegner einverstanden → Rest an Alleinspieler', () => {
+  const { welt, vh, mh, hh } = spielBisAnsage('grand');
+  spieleKarten(welt, 4);                       // 1 Stich + 1 Karte im neuen Stich
+  assert.throws(() => S.aktion(welt, mh, { typ: 'zeigen' }), /Nur der Alleinspieler/);
+  S.aktion(welt, vh, { typ: 'zeigen' });
+  assert.strictEqual(welt.tisch.offeneKarten.length, welt.haende[vh].length);
+  assert.throws(() => S.aktion(welt, welt.tisch.amZug, { typ: 'karte', karte: welt.haende[welt.tisch.amZug][0] }), /entscheiden/);
+  assert.throws(() => S.aktion(welt, vh, { typ: 'zustimmen', ja: true }), /Gegenspieler/);
+  S.aktion(welt, mh, { typ: 'zustimmen', ja: true });
+  assert.strictEqual(welt.tisch.phase, 'spielen');
+  S.aktion(welt, hh, { typ: 'zustimmen', ja: true });
+  const e = welt.tisch.ergebnis;
+  assert.strictEqual(welt.tisch.phase, 'spielende');
+  assert.strictEqual(e.augenAllein + e.augenGegner, 120);
+  const sticheGes = welt.tisch.stichZahl.reduce((a, b) => a + b, 0);
+  assert.strictEqual(sticheGes, 10);
+  assert.match(e.text, /Rest beansprucht/);
+});
+
+test('Karten zeigen: Gegner lehnt ab → weiterspielen, Karten bleiben offen', () => {
+  const { welt, vh, mh } = spielBisAnsage('herz');
+  S.aktion(welt, vh, { typ: 'zeigen' });
+  S.aktion(welt, mh, { typ: 'zustimmen', ja: false });
+  assert.strictEqual(welt.tisch.anspruch, null);
+  assert.ok(welt.tisch.offeneKarten.length === 10);
+  spieleKarten(welt, 30);
+  assert.strictEqual(welt.tisch.phase, 'spielende');
+});
+
+test('Null: gezeigt und angenommen → gewonnen', () => {
+  const { welt, vh, mh, hh } = spielBisAnsage('null');
+  S.aktion(welt, vh, { typ: 'zeigen' });
+  S.aktion(welt, mh, { typ: 'zustimmen', ja: true });
+  S.aktion(welt, hh, { typ: 'zustimmen', ja: true });
+  assert.ok(welt.tisch.ergebnis.gewonnen);
+  assert.strictEqual(welt.tisch.ergebnis.wert, 23);
+});
+
+test('Aufgabe vor dem ersten Ausspiel: einfach verloren', () => {
+  const { welt, vh } = spielBisAnsage('grand');
+  S.aktion(welt, vh, { typ: 'aufgeben' });
+  const e = welt.tisch.ergebnis;
+  assert.ok(!e.gewonnen);
+  assert.match(e.text, /aufgegeben/);
+  assert.doesNotMatch(e.text, /Schneider|Schwarz/);
+  // Grand mit/ohne n: 24 × (n + 1), ohne Schneider-Stufe
+  assert.strictEqual(e.wert, 24 * (e.spitzen.anzahl + 1));
+  assert.strictEqual(welt.tisch.liste[0].punkte[vh], -(2 * e.wert + 50));
+});
+
+test('Aufgabe nach dem ersten Stich: verloren, Rest an Gegner', () => {
+  const { welt, vh } = spielBisAnsage('kreuz');
+  spieleKarten(welt, 3);
+  S.aktion(welt, vh, { typ: 'aufgeben' });
+  const e = welt.tisch.ergebnis;
+  assert.ok(!e.gewonnen);
+  assert.strictEqual(e.augenAllein + e.augenGegner, 120);
+  assert.ok(e.augenAllein <= 30 + 30);   // nur erster Stich + Skat können beim Alleinspieler sein
+});

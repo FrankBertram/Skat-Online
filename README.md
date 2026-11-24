@@ -78,6 +78,13 @@ angesagt und Ouvert nur bei Hand; Null ouvert auch mit Skat) → 10 Stiche →
 Abrechnung → „Nächstes Spiel geben“. Nach der eingestellten Spielanzahl
 (Standard 48 bzw. 36) ist die Liste beendet.
 
+Neben der eigenen Hand: **Sortieren** wie Grand, Null, ♣, ♠, ♥ oder ♦ (nach der Ansage
+automatisch wie das angesagte Spiel). Der Alleinspieler hat im Spiel **🃏 Karten zeigen**
+(beansprucht alle restlichen Stiche, bei Null: keinen Stich mehr; beide Gegenspieler müssen
+zustimmen, sonst wird mit offenen Karten weitergespielt) und **🏳 Aufgeben** (verloren; die
+restlichen Karten gehen an die Gegenspieler; vor dem ersten Ausspiel einfach verloren, ohne
+Schneider/Schwarz außer angesagt).
+
 Wertung: gewonnen +(Wert + 50); verloren −(2 × Wert + 50) und alle anderen am Tisch
 +30 (4er) bzw. +40 (3er). Überreizt: verloren mit dem nächsten Vielfachen des
 Grundwerts ≥ Reizwert. Eingepasste Spiele zählen als Spiel ohne Punkte.
