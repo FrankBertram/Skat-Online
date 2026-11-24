@@ -105,10 +105,10 @@
   .meinbereich .nm { font-weight: 700; }
   .meinbereich.amzug .hand { background: rgba(227,179,65,.18); border-radius: 14px; }
   .hand { display: flex; justify-content: center; flex-wrap: nowrap; padding: 16px 6px 4px; min-height: calc(var(--kb) * 1.53 + 20px); }
-  /* Eigene Hand ca. 40 % größer, begrenzt durch die Breite (12 Karten + Sortierleiste) */
-  .hand { --kb: min(calc(var(--kb-basis) * 1.4), calc((100vw - 520px) / 9)); }
-  @media (max-width: 1050px) { .hand { --kb: max(44px, min(calc(var(--kb-basis) * 1.4), calc((100vw - 170px) / 9))); } }
-  .hand .karte { margin-left: calc(var(--kb) * -0.3); }
+  /* Eigene Hand ca. 80 % größer, begrenzt durch die Breite (12 Karten überlappend + Sortierleiste) */
+  .hand { --kb: min(calc(var(--kb-basis) * 1.8), calc((100vw - 540px) / 7.3)); }
+  @media (max-width: 1050px) { .hand { --kb: max(44px, min(calc(var(--kb-basis) * 1.8), calc((100vw - 170px) / 7.3))); } }
+  .hand .karte { margin-left: calc(var(--kb) * -0.45); }
   .hand .karte:first-child { margin-left: 0; }
   .hand .karte.spielbar { cursor: pointer; }
   .hand .karte.spielbar:hover { transform: translateY(-12px); }
@@ -813,10 +813,12 @@ function starteDemo() {
     let h = `<b>Übungsmodus</b> – alle Plätze an diesem PC. Ansicht: `;
     welt.tisch.spieler.forEach((s, i) => { h += `<button data-ansicht="${i}" class="${i === ansicht ? 'primaer' : ''}" style="padding:3px 10px">${esc(s.name)}</button>`; });
     h += `<label><input type="checkbox" id="demoFolgen" ${folgen ? 'checked' : ''}> Ansicht folgt dem Spieler am Zug</label>
-          <a href="?demo=${plaetze === 4 ? 3 : 4}">${plaetze === 4 ? '3' : '4'}er-Tisch</a>`;
+          <a href="?demo=${plaetze === 4 ? 3 : 4}">${plaetze === 4 ? '3' : '4'}er-Tisch</a>
+          <button id="demoEnde" class="gefahr" style="margin-left:auto;padding:3px 10px">Übungsmodus beenden</button>`;
     $('demoLeiste').innerHTML = h;
     $('demoLeiste').querySelectorAll('[data-ansicht]').forEach(b => b.onclick = () => { ansicht = +b.dataset.ansicht; folgen = false; aktualisieren(); });
     $('demoFolgen').onchange = e => { folgen = e.target.checked; aktualisieren(); };
+    $('demoEnde').onclick = () => { location.href = location.pathname; };   // zurück zur Startseite
   };
   backend = {
     aktion: async (d) => {
