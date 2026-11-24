@@ -78,7 +78,8 @@ angesagt und Ouvert nur bei Hand; Null ouvert auch mit Skat) → 10 Stiche →
 Abrechnung → „Nächstes Spiel geben“. Nach der eingestellten Spielanzahl
 (Standard 48 bzw. 36) ist die Liste beendet.
 
-Neben der eigenen Hand: **Sortieren** wie Grand, Null, ♣, ♠, ♥ oder ♦ (nach der Ansage
+Neben der eigenen Hand: **Sortieren** wie Grand, Null, ♣, ♠, ♥ oder ♦, Farben abwechselnd schwarz/rot
+(Kreuz, Herz, Pik, Karo; bei Farbspielen Trumpf vorn, dann reihum) (nach der Ansage
 automatisch wie das angesagte Spiel). Der Alleinspieler hat im Spiel **🃏 Karten zeigen**
 (beansprucht alle restlichen Stiche, bei Null: keinen Stich mehr; beide Gegenspieler müssen
 zustimmen, sonst wird mit offenen Karten weitergespielt) und **🏳 Aufgeben** (verloren; die

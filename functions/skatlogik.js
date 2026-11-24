@@ -147,10 +147,16 @@
   // Sortierung für die Anzeige der eigenen Hand
   function sortiereHand(karten, art) {
     const a = art || 'grand';
-    const farbReihe = ['c', 's', 'h', 'd'];
+    // Farben abwechselnd schwarz/rot: Kreuz, Herz, Pik, Karo – auch bei gewählter Spielart:
+    // die Trumpffarbe steht vorn, der Rest wird reihum weitergezählt
+    // (Herz → Herz, Pik, Karo, Kreuz; Pik → Pik, Karo, Kreuz, Herz), damit die Farben abwechseln.
+    const farbReihe = ['c', 'h', 's', 'd'];
     const sa = SPIELARTEN[a];
     let reihe = farbReihe;
-    if (sa && sa.farbe) reihe = [sa.farbe].concat(farbReihe.filter(f => f !== sa.farbe));
+    if (sa && sa.farbe) {
+      const i = farbReihe.indexOf(sa.farbe);
+      reihe = farbReihe.slice(i).concat(farbReihe.slice(0, i));
+    }
     const schluessel = k => {
       if (a !== 'null' && wert(k) === 'B') return [0, 3 - BUBEN_RANG[farbe(k)]];
       const rang = a === 'null' ? RANG_NULL : RANG_NORMAL;

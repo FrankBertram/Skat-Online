@@ -277,3 +277,11 @@ test('Aufgabe nach dem ersten Stich: verloren, Rest an Gegner', () => {
   assert.strictEqual(e.augenAllein + e.augenGegner, 120);
   assert.ok(e.augenAllein <= 30 + 30);   // nur erster Stich + Skat können beim Alleinspieler sein
 });
+
+test('Hand-Sortierung: Farben abwechselnd', () => {
+  const hand = ['d7', 'sA', 'hK', 'cZ', 'hB', 'cB'];
+  assert.deepStrictEqual(S.sortiereHand(hand, 'grand'), ['cB', 'hB', 'cZ', 'hK', 'sA', 'd7']);
+  assert.deepStrictEqual(S.sortiereHand(hand, 'pik'), ['cB', 'hB', 'sA', 'd7', 'cZ', 'hK']);
+  assert.deepStrictEqual(S.sortiereHand(hand, 'herz'), ['cB', 'hB', 'hK', 'sA', 'd7', 'cZ']);
+  assert.deepStrictEqual(S.sortiereHand(hand, 'null'), ['cB', 'cZ', 'hK', 'hB', 'sA', 'd7']);  // Null: B über 10
+});
