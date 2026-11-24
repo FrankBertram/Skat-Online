@@ -13,7 +13,9 @@
     --kb-basis: clamp(36px, min(7vw, calc((100vh - 410px) / 7.2)), 78px);
     --kb: var(--kb-basis);
     /* gemeinsame Größe für die eigene Hand und die Stichkarten in der Mitte (12 Karten müssen in die Breite passen) */
-    --kb-spiel: max(44px, min(calc(var(--kb-basis) * 1.6), calc((100vw - 200px) / 7.3)));
+    /* Höhe: Kopf, Infoleiste, Sitzreihe ≈ 350 px fest, dazu Mitte (2,55 Karten) + Hand (1,53 Karten + Rand) */
+    --kb-hoehe: calc((100vh - 350px) / 4.1);
+    --kb-spiel: max(44px, min(var(--kb-hoehe), calc((100vw - 480px) / 7.75)));
   }
   * { box-sizing: border-box; }
   body { margin: 0; font-family: system-ui, "Segoe UI", Arial, sans-serif; color: var(--text); background: #e9eef2; }
@@ -50,9 +52,9 @@
 
   .filz { position: relative; background: radial-gradient(ellipse at center, #2b8a4b 0%, var(--filz) 55%, var(--filz-dunkel) 100%);
           border-radius: 22px; box-shadow: inset 0 0 40px rgba(0,0,0,.35); color: #fff;
-          display: grid; grid-template-columns: 1fr 1.6fr 1fr; grid-template-rows: auto 1fr auto auto; padding: 8px 12px; gap: 4px; }
+          display: grid; grid-template-columns: 1fr 1.6fr 1fr; grid-template-rows: auto 1fr auto; padding: 8px 12px; gap: 4px; }
   /* feste Mindesthöhe: Abzeichen (passe, Reizwert …) und Geber ohne Karten verändern die Höhe sonst laufend */
-  .sitz { background: rgba(0,0,0,.22); border-radius: 12px; padding: 8px 10px; min-width: 150px; min-height: 128px; align-self: center; justify-self: center; text-align: center; border: 2px solid transparent;
+  .sitz { background: rgba(0,0,0,.22); border-radius: 12px; padding: 8px 10px; min-width: 150px; min-height: 118px; align-self: start; justify-self: center; text-align: center; border: 2px solid transparent;
           display: flex; flex-direction: column; justify-content: center; }
   .sitz.amzug { border-color: var(--gold); box-shadow: 0 0 14px rgba(227,179,65,.7); }
   .sitz .nm { font-weight: 700; font-size: 16px; }
@@ -66,9 +68,9 @@
   .sitz .ruecken span:first-child { margin-left: 0; }
   .sitz .offen { display: flex; flex-wrap: wrap; justify-content: center; gap: 2px; margin-top: 6px; --kb: 40px; }
   #sitzOben { grid-column: 2; grid-row: 1; }
-  #sitzLinks { grid-column: 1; grid-row: 2; }
-  #sitzRechts { grid-column: 3; grid-row: 2; }
-  .mitte { grid-column: 2; grid-row: 2; position: relative; --kb: var(--kb-spiel); min-height: calc(var(--kb) * 2.55); margin-bottom: 4px; }
+  #sitzLinks { grid-column: 1; grid-row: 1; }
+  #sitzRechts { grid-column: 3; grid-row: 1; }
+  .mitte { grid-column: 1 / -1; grid-row: 2; position: relative; --kb: var(--kb-spiel); min-height: calc(var(--kb) * 2.55); margin-bottom: 4px; }
   .mitte .skat { --kb: var(--kb-basis); }
   .lupe { position: absolute; right: 4px; top: 4px; z-index: 5; padding: 4px 10px; font-size: 15px; background: rgba(255,255,255,.9); }
   .lupe.an { background: var(--gold); border-color: #8a6414; font-weight: 700; }
@@ -94,18 +96,29 @@
   @keyframes dreh-hin { to { transform: scaleX(1); } }
   .hand .karte.ausSkat { box-shadow: 0 0 0 3px #7fd3ff, 0 2px 5px rgba(0,0,0,.45); }
   .hand .karte.ausSkat.gewaehlt { box-shadow: 0 0 0 3px var(--gold), 0 4px 10px rgba(0,0,0,.4); }
-  .mitte .meldung { position: absolute; left: 0; top: 0; z-index: 4; font-size: 14px; text-shadow: 0 1px 2px #000; max-width: 34%; text-align: left; }
+  /* wer am Zug ist: links in der Mitte */
+  .mitte .meldung { position: absolute; left: 8px; top: 50%; transform: translateY(-50%); z-index: 4; font-size: 18px; font-weight: 600;
+                    text-shadow: 0 1px 3px #000; max-width: 24%; text-align: left; }
+  .mitte .meldung.du { color: var(--gold); }
   .mitte .meldung:empty { display: none; }
-  /* feste Mindesthöhe (Frage + Knopfzeile), damit die Hand beim Reizen nicht springt */
-  .aktionen { grid-column: 1 / -1; grid-row: 3; text-align: center; min-height: 92px; display: flex; flex-direction: column; align-items: center; gap: 8px; justify-content: center; }
+  /* Fragen und Knöpfe (Reizen, Ansage …) liegen unten über der Tischmitte – so springt nichts */
+  .aktionen { grid-column: 1 / -1; grid-row: 2; align-self: end; justify-self: center; z-index: 6; text-align: center; display: flex; flex-direction: column;
+              align-items: center; gap: 8px; justify-content: center; pointer-events: none; padding: 8px 14px; border-radius: 14px; margin-bottom: 6px; }
+  .aktionen:not(:empty) { background: rgba(0,40,15,.55); box-shadow: 0 2px 10px rgba(0,0,0,.25); }
+  .aktionen > * { pointer-events: auto; }
   .aktionen .frage { font-size: 17px; font-weight: 600; text-shadow: 0 1px 2px #000; }
   .aktionen .knoepfe { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; align-items: center; }
   .aktionen .knoepfe button { min-width: 64px; }
   .spielwahl button { min-width: 74px; font-size: 17px; }
   .spielwahl button.gewaehlt { background: var(--gold); border-color: #8a6414; font-weight: 700; }
   .aktionen label { font-size: 15px; text-shadow: 0 1px 2px #000; }
-  .meinbereich { grid-column: 1 / -1; grid-row: 4; text-align: center; }
-  .handzeile { display: flex; align-items: center; justify-content: center; gap: 10px; }
+  .meinbereich { grid-column: 1 / -1; grid-row: 3; text-align: center; }
+  .handzeile { display: flex; align-items: center; justify-content: center; gap: 12px; }
+  .meinkopf { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; min-width: 110px; text-align: right; text-shadow: 0 1px 2px #000; font-size: 14px; }
+  .meinkopf .nm { font-size: 18px; }
+  .meinkopf .abz { background: var(--gold); color: #000; border-radius: 10px; padding: 1px 7px; font-size: 12px; font-weight: 700; text-shadow: none; }
+  .spielknoepfe { display: flex; flex-direction: column; gap: 6px; min-width: 140px; align-items: stretch; }
+  .spielknoepfe button { padding: 6px 10px; font-size: 14px; }
   .sortierung { display: grid; grid-template-columns: repeat(2, auto); gap: 3px; align-content: center; }
   .sortierung .titel { grid-column: 1 / -1; font-size: 11px; opacity: .85; text-shadow: 0 1px 2px #000; }
   .sortierung button { padding: 2px 6px; font-size: 13px; min-width: 50px; background: rgba(255,255,255,.88); border-radius: 6px; }
@@ -113,9 +126,10 @@
   .meinbereich .nm { font-weight: 700; }
   .meinbereich.amzug .hand { background: rgba(227,179,65,.18); border-radius: 14px; }
   .hand { display: flex; justify-content: center; flex-wrap: nowrap; padding: 16px 6px 4px; min-height: calc(var(--kb) * 1.53 + 20px); }
-  /* Eigene Hand ca. 80 % größer, begrenzt durch die Breite (12 Karten überlappend + Sortierleiste) */
+  /* Eigene Hand so groß wie der Stich; Karten überlappen höchstens 25 %, 12 Karten (beim Drücken) etwas kleiner */
   .hand { --kb: var(--kb-spiel); }
-  .hand .karte { margin-left: calc(var(--kb) * -0.45); }
+  .hand.zwoelf { --kb: max(44px, min(var(--kb-hoehe), calc((100vw - 480px) / 9.25))); }
+  .hand .karte { margin-left: calc(var(--kb) * -0.25); }
   .hand .karte:first-child { margin-left: 0; }
   .hand .karte.spielbar { cursor: pointer; }
   .hand .karte.spielbar:hover { transform: translateY(-12px); }
@@ -538,9 +552,9 @@ function renderMitte(pos) {
   if (lupe) meldung = `🔍 Letzter Stich – an ${esc(nameVon(t.letzterStich.gewinner))}`;
   else if (alt) meldung = `Stich an ${esc(nameVon(t.letzterStich.gewinner))}`;
   else if (t.status === 'warten') meldung = `Warten auf Spieler (${t.spieler.filter(Boolean).length} / ${t.plaetze})`;
-  else if (t.phase === 'spielen' && t.amZug != null) meldung = `${esc(nameVon(t.amZug))} ist am Zug`;
+  else if (t.phase === 'spielen' && t.amZug != null && !t.anspruch) meldung = t.amZug === ich ? 'Du bist am Zug – spiele eine Karte.' : `${esc(nameVon(t.amZug))} ist am Zug`;
   if (!meldung && t.phase === 'druecken' && ich !== t.alleinspieler) meldung = `${esc(nameVon(t.alleinspieler))} hat den Skat aufgenommen`;
-  h += `<div class="meldung">${meldung}</div>`;
+  h += `<div class="meldung${!alt && t.phase === 'spielen' && t.amZug === ich && ich >= 0 ? ' du' : ''}">${meldung}</div>`;
   if (h !== letzteMitte) { $('mitte').innerHTML = h; letzteMitte = h; }
 }
 
@@ -605,18 +619,6 @@ function renderAktionen(ich) {
           knopf('Nicht einverstanden – weiterspielen', { typ: 'zustimmen', ja: false }, 'gefahr') + '</div>';
       } else {
         h = `<div class="frage">${esc(nameVon(allein))} zeigt die Karten und beansprucht ${was} – warte auf die Gegenspieler (${t.anspruch.zustimmung.length}/2 einverstanden).</div>`;
-      }
-    } else {
-      if (amZug) h = `<div class="frage">Du bist am Zug – spiele eine Karte.</div>`;
-      if (ich === allein) {
-        h += `<div class="knoepfe">` +
-          knopf('🃏 Karten zeigen', { typ: 'zeigen' }, '',
-            istNull ? 'Karten zeigen und beanspruchen, keinen Stich mehr zu bekommen? Die Gegenspieler müssen zustimmen.'
-                    : 'Karten zeigen und alle restlichen Stiche beanspruchen? Die Gegenspieler müssen zustimmen.') +
-          knopf('🏳 Aufgeben', { typ: 'aufgeben' }, 'gefahr',
-            'Spiel wirklich aufgeben? Es zählt als verloren' +
-            (t.stichNr === 0 && t.stich.length === 0 ? ' (vor dem ersten Ausspiel: einfach, ohne Schneider).' : ', die restlichen Karten gehen an die Gegenspieler.')) +
-          `</div>`;
       }
     }
   } else if (t.phase === 'spielende') {
@@ -690,9 +692,9 @@ function renderMeinBereich(ich) {
     el.innerHTML = `<div class="zuschauer">Du schaust zu.</div>`;
     return;
   }
-  let kopf = `<span class="nm">${esc(nameVon(ich))}</span> <span class="hinweis" style="color:#dfe">${esc(rolleVon(ich))}</span>`;
-  if (t.alleinspieler === ich) kopf += ` <span class="abz allein" style="background:var(--gold);color:#000;border-radius:10px;padding:1px 7px;font-size:12px">${esc(alleinText())}</span>`;
-  if ((t.phase === 'spielen' || t.phase === 'spielende') && t.aktive.includes(ich) && t.spiel) kopf += ` · ${t.stichZahl[ich]} Stiche`;
+  let kopf = `<span class="nm">${esc(nameVon(ich))}</span> <span>${esc(rolleVon(ich))}</span>`;
+  if (t.alleinspieler === ich) kopf += ` <span class="abz">${esc(alleinText())}</span>`;
+  if ((t.phase === 'spielen' || t.phase === 'spielende') && t.aktive.includes(ich) && t.spiel) kopf += ` <span>${t.stichZahl[ich]} Stiche</span>`;
   const sitzt = t.status === 'laeuft' && t.aktive && !t.aktive.includes(ich);
   if (sitzt && t.phase !== 'spielende') {
     el.innerHTML = `<div class="zuschauer">${kopf}<br>Du hast gegeben und setzt dieses Spiel aus – du siehst nur die gespielten Karten.</div>`;
@@ -715,7 +717,26 @@ function renderMeinBereich(ich) {
     ['herz', '<span class="mini f-h">♥</span>'], ['karo', '<span class="mini f-d">♦</span>']]
     .map(([a, txt]) => `<button data-sort="${a}" class="${art === a ? 'aktiv' : ''}" title="Hand sortieren wie ${S.SPIELARTEN[a].name}">${txt}</button>`).join('');
   const sortierung = meineKarten.length ? `<div class="sortierung"><span class="titel">Sortieren</span>${sortKnoepfe}</div>` : '';
-  el.innerHTML = `<div class="handzeile"><div class="hand ${druecken ? 'waehlbar' : ''}" id="meineHand">${hand}</div>${sortierung}</div><div>${kopf}</div>`;
+  // Karten zeigen / Aufgeben (nur Alleinspieler im laufenden Spiel)
+  let spielKn = '';
+  if (t.phase === 'spielen' && ich === t.alleinspieler && !t.anspruch) {
+    const istNull = t.spiel.art === 'null';
+    spielKn = knopf('🃏 Karten zeigen', { typ: 'zeigen' }, '',
+        istNull ? 'Karten zeigen und beanspruchen, keinen Stich mehr zu bekommen? Die Gegenspieler müssen zustimmen.'
+                : 'Karten zeigen und alle restlichen Stiche beanspruchen? Die Gegenspieler müssen zustimmen.') +
+      knopf('🏳 Aufgeben', { typ: 'aufgeben' }, 'gefahr',
+        'Spiel wirklich aufgeben? Es zählt als verloren' +
+        (t.stichNr === 0 && t.stich.length === 0 ? ' (vor dem ersten Ausspiel: einfach, ohne Schneider).' : ', die restlichen Karten gehen an die Gegenspieler.'));
+  }
+  el.innerHTML = `<div class="handzeile"><div class="meinkopf">${kopf}</div>` +
+    `<div class="hand ${druecken ? 'waehlbar' : ''} ${karten.length > 10 ? 'zwoelf' : ''}" id="meineHand">${hand}</div>${sortierung}` +
+    `<div class="spielknoepfe">${spielKn}</div></div>`;
+  el.querySelectorAll('button[data-aktion]').forEach(b => {
+    b.onclick = () => {
+      if (b.dataset.rueckfrage && !confirm(b.dataset.rueckfrage)) return;
+      aktion(JSON.parse(b.dataset.aktion));
+    };
+  });
   el.querySelectorAll('[data-sort]').forEach(b => b.onclick = () => { sortierArt = b.dataset.sort; render(); });
   el.classList.toggle('amzug', t.amZug === ich);
   $('meineHand').querySelectorAll('.karte').forEach(kEl => {
