@@ -9,7 +9,9 @@
     --filz: #1f6b3a; --filz-dunkel: #15502b; --gold: #e3b341; --text: #1b1f24;
     --hell: #f6f8fa; --rand: #d0d7de; --rot: #c62828; --gruen: #1a7f37;
     --c: #111; --s: #111; --h: #d1242f; --d: #d1242f;
-    --kb: clamp(40px, min(7.2vw, calc((100vh - 270px) / 7.4)), 80px);
+    /* Kartenbreite: richtet sich nach Fensterbreite und -höhe (Tisch ohne Scrollen) */
+    --kb-basis: clamp(36px, min(7vw, calc((100vh - 270px) / 8.2)), 78px);
+    --kb: var(--kb-basis);
   }
   * { box-sizing: border-box; }
   body { margin: 0; font-family: system-ui, "Segoe UI", Arial, sans-serif; color: var(--text); background: #e9eef2; }
@@ -70,6 +72,22 @@
   .stichkarte.links { transform: translate(-125%, -50%) rotate(-8deg); }
   .stichkarte.rechts{ transform: translate(25%, -50%) rotate(8deg); }
   .stichkarte.alt { opacity: .75; }
+  /* Skat in der Tischmitte: verdeckt, beim Aufnehmen (nur für den Alleinspieler) umgedreht */
+  .skat { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); display: flex; gap: 8px; }
+  .skat.klein { left: 6px; top: 6px; transform: none; gap: 3px; --kb: 30px; opacity: .85; }
+  .skat .titel { position: absolute; left: 0; right: 0; top: 100%; margin-top: 4px; font-size: 12px; text-align: center; text-shadow: 0 1px 2px #000; white-space: nowrap; }
+  .skat.klein .titel { display: none; }
+  .ruecken-karte img { width: 100%; height: 100%; display: block; }
+  .dreh { position: relative; width: var(--kb); height: calc(var(--kb) * 1.527); }
+  .dreh > .karte { position: absolute; inset: 0; }
+  .dreh .rs { animation: dreh-weg .35s ease-in forwards; }
+  .dreh .vs { transform: scaleX(0); animation: dreh-hin .35s ease-out .35s forwards; }
+  .dreh:nth-child(2) .rs { animation-delay: .25s; }
+  .dreh:nth-child(2) .vs { animation-delay: .6s; }
+  @keyframes dreh-weg { to { transform: scaleX(0); } }
+  @keyframes dreh-hin { to { transform: scaleX(1); } }
+  .hand .karte.ausSkat { box-shadow: 0 0 0 3px #7fd3ff, 0 2px 5px rgba(0,0,0,.45); }
+  .hand .karte.ausSkat.gewaehlt { box-shadow: 0 0 0 3px var(--gold), 0 4px 10px rgba(0,0,0,.4); }
   .mitte .meldung { position: absolute; inset: 0 0 auto 0; text-align: center; font-size: 14px; text-shadow: 0 1px 2px #000; }
   .aktionen { grid-column: 1 / -1; grid-row: 3; text-align: center; min-height: 40px; display: flex; flex-direction: column; align-items: center; gap: 8px; justify-content: center; }
   .aktionen .frage { font-size: 17px; font-weight: 600; text-shadow: 0 1px 2px #000; }
@@ -87,6 +105,9 @@
   .meinbereich .nm { font-weight: 700; }
   .meinbereich.amzug .hand { background: rgba(227,179,65,.18); border-radius: 14px; }
   .hand { display: flex; justify-content: center; flex-wrap: nowrap; padding: 16px 6px 4px; min-height: calc(var(--kb) * 1.53 + 20px); }
+  /* Eigene Hand ca. 40 % größer, begrenzt durch die Breite (12 Karten + Sortierleiste) */
+  .hand { --kb: min(calc(var(--kb-basis) * 1.4), calc((100vw - 520px) / 9)); }
+  @media (max-width: 1050px) { .hand { --kb: max(44px, min(calc(var(--kb-basis) * 1.4), calc((100vw - 170px) / 9))); } }
   .hand .karte { margin-left: calc(var(--kb) * -0.3); }
   .hand .karte:first-child { margin-left: 0; }
   .hand .karte.spielbar { cursor: pointer; }
@@ -268,6 +289,21 @@ const TISCHE = 'skatonline_tische';
 let uid = null;
 let tisch = null;          // öffentliches Tisch-Dokument
 let meineKarten = [];      // eigene Hand
+let skatInfo = null;       // { spielNr, karten, bis } – aufgenommener Skat (nur eigene Sicht)
+let letzteMitte = '';      // zuletzt gezeichnete Tischmitte (Animationen nicht neu starten)
+
+// Eigene Hand setzen; wächst sie von 10 auf 12 Karten, wurde der Skat aufgenommen
+let meineKartenVon = null;  // uid, zu der meineKarten gehören (Übungsmodus wechselt die Ansicht)
+function setzeMeineKarten(neu) {
+  // Hand- und Tisch-Dokument kommen getrennt an: Phase 'skataufnahme' oder schon 'druecken'
+  if (tisch && (tisch.phase === 'skataufnahme' || tisch.phase === 'druecken') && meineKartenVon === uid &&
+      meineKarten.length === 10 && neu.length === 12 && tisch.alleinspieler === meinPlatz()) {
+    skatInfo = { spielNr: tisch.spielNr, karten: neu.filter(k => !meineKarten.includes(k)), bis: Date.now() + 3000 };
+    setTimeout(render, 3050);
+  }
+  meineKarten = neu;
+  meineKartenVon = uid;
+}
 let tischId = null;
 let beschaeftigt = false;
 let auswahlDruecken = [];  // beim Drücken gewählte Karten
@@ -423,7 +459,7 @@ function sitzHTML(p) {
       (kannSetzen ? `<button data-platz="${p}" class="primaer" style="margin-top:6px">Hier hinsetzen</button>` : '');
   }
   let h = `<div class="nm">${esc(s.name)}</div><div class="rolle">${esc(rolleVon(p))}</div>`;
-  if (t.alleinspieler === p) h += `<span class="abz allein">Alleinspieler</span>`;
+  if (t.alleinspieler === p) h += `<span class="abz allein">${esc(alleinText())}</span>`;
   if (t.phase === 'reizen' && t.reizen) {
     const r = t.reizen;
     if ((r.gepasst || []).includes(p)) h += `<span class="abz passe">passe</span>`;
@@ -441,9 +477,29 @@ function sitzHTML(p) {
   return h;
 }
 
+// Text im Abzeichen des Alleinspielers: angesagtes Spiel, vorher der Reizwert
+function alleinText() {
+  const t = tisch;
+  if (t.spiel) return S.spielText(t.spiel);
+  return 'Alleinspieler · ' + t.reizwert;
+}
+
+function skatHTML(klein) {
+  const r = `<div class="karte ruecken-karte"><img src="${window.KartenBild.rueckenUrl()}" alt="Skat"></div>`;
+  return `<div class="skat${klein ? ' klein' : ''}" title="Skat">${r}${r}<div class="titel">Skat</div></div>`;
+}
+
 function renderMitte(pos) {
   const t = tisch;
   let h = '';
+  const ich = meinPlatz();
+  // Skat: verdeckt beim Reizen und vor der Aufnahme, bei Handspielen klein in der Ecke
+  if (t.phase === 'reizen' || t.phase === 'skataufnahme') h += skatHTML(false);
+  else if (t.phase === 'spielen' && t.spiel && t.spiel.hand) h += skatHTML(true);
+  else if (t.phase === 'druecken' && skatInfo && skatInfo.spielNr === t.spielNr && ich === t.alleinspieler && Date.now() < skatInfo.bis) {
+    const rs = `<div class="karte rs"><img src="${window.KartenBild.rueckenUrl()}" alt=""></div>`;
+    h += `<div class="skat">${skatInfo.karten.map(k => `<div class="dreh">${rs}${karteHTML(k, 'vs')}</div>`).join('')}<div class="titel">Dein Skat</div></div>`;
+  }
   let karten = t.stich || [];
   let alt = false;
   if (karten.length === 0 && t.letzterStich && Date.now() < zeigeStichBis) { karten = t.letzterStich.karten; alt = true; }
@@ -452,8 +508,9 @@ function renderMitte(pos) {
   if (alt) meldung = `Stich an ${esc(nameVon(t.letzterStich.gewinner))}`;
   else if (t.status === 'warten') meldung = `Warten auf Spieler (${t.spieler.filter(Boolean).length} / ${t.plaetze})`;
   else if (t.phase === 'spielen' && t.amZug != null) meldung = `${esc(nameVon(t.amZug))} ist am Zug`;
+  if (!meldung && t.phase === 'druecken' && ich !== t.alleinspieler) meldung = `${esc(nameVon(t.alleinspieler))} hat den Skat aufgenommen`;
   h += `<div class="meldung">${meldung}</div>`;
-  $('mitte').innerHTML = h;
+  if (h !== letzteMitte) { $('mitte').innerHTML = h; letzteMitte = h; }
 }
 
 function knopf(text, daten, klasse = '', rueckfrage = '') {
@@ -603,7 +660,7 @@ function renderMeinBereich(ich) {
     return;
   }
   let kopf = `<span class="nm">${esc(nameVon(ich))}</span> <span class="hinweis" style="color:#dfe">${esc(rolleVon(ich))}</span>`;
-  if (t.alleinspieler === ich) kopf += ` <span class="abz allein" style="background:var(--gold);color:#000;border-radius:10px;padding:1px 7px;font-size:12px">Alleinspieler</span>`;
+  if (t.alleinspieler === ich) kopf += ` <span class="abz allein" style="background:var(--gold);color:#000;border-radius:10px;padding:1px 7px;font-size:12px">${esc(alleinText())}</span>`;
   if ((t.phase === 'spielen' || t.phase === 'spielende') && t.aktive.includes(ich) && t.spiel) kopf += ` · ${t.stichZahl[ich]} Stiche`;
   const sitzt = t.status === 'laeuft' && t.aktive && !t.aktive.includes(ich);
   if (sitzt && t.phase !== 'spielende') {
@@ -620,6 +677,7 @@ function renderMeinBereich(ich) {
     let kl = '';
     if (spielen) kl = erlaubt.includes(k) ? 'spielbar' : 'gesperrt';
     if (druecken && auswahlDruecken.includes(k)) kl += ' gewaehlt';
+    if (druecken && skatInfo && skatInfo.spielNr === t.spielNr && skatInfo.karten.includes(k)) kl += ' ausSkat';
     return karteHTML(k, kl);
   }).join('');
   const sortKnoepfe = [['grand', 'Grand'], ['null', 'Null'], ['kreuz', '<span class="mini f-c">♣</span>'], ['pik', '<span class="mini f-s">♠</span>'],
@@ -747,7 +805,7 @@ function starteDemo() {
     if (folgen && t.anspruch) ansicht = t.aktive.find(p => p !== t.alleinspieler && !t.anspruch.zustimmung.includes(p));
     else if (folgen && t.amZug != null) ansicht = t.amZug;
     uid = 'demo' + ansicht;
-    meineKarten = welt.haende[ansicht].slice();
+    setzeMeineKarten(welt.haende[ansicht].slice());
     leiste();
     tischGeaendert(JSON.parse(JSON.stringify(welt.tisch)));
   };
@@ -963,7 +1021,7 @@ async function starteOnline() {
       tischGeaendert(snap.data());
     }, e => toast('Tisch: ' + e.message, true));
     const abo2 = fs.onSnapshot(fs.doc(db, TISCHE, tischId, 'haende', uid), snap => {
-      meineKarten = snap.exists() ? (snap.data().karten || []) : [];
+      setzeMeineKarten(snap.exists() ? (snap.data().karten || []) : []);
       render();
     }, () => {});
     abmeldenTisch = () => { abo1(); abo2(); };
