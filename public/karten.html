@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<title>Skat-Online – Kartenvorschau</title>
+<style>
+  body { font-family: system-ui, Arial, sans-serif; background: #1f6b3a; color: #fff; margin: 16px; }
+  .reihe { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+  img { width: 120px; height: auto; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,.5); }
+  .klein img { width: 60px; border-radius: 4px; }
+</style>
+</head>
+<body>
+<h2>Kartenvorschau – eigenes Blatt (SVG)</h2>
+<div id="blatt"></div>
+<h3>Kleine Darstellung (wie in der Hand am Handy)</h3>
+<div id="klein" class="reihe klein"></div>
+<script src="skatlogik.js"></script>
+<script src="kartenbild.js"></script>
+<script>
+const url = k => KartenBild.url(k);
+function zeichne() {
+  let h = '';
+  SkatLogik.FARBEN.forEach(f => {
+    h += '<div class="reihe">' + ['B', 'D', 'K', 'A', 'Z', '9', '8', '7']
+      .map(w => `<img src="${url(f + w)}" title="${f + w}">`).join('') + '</div>';
+  });
+  h += `<div class="reihe"><img src="${KartenBild.rueckenUrl()}" title="Rückseite"></div>`;
+  document.getElementById('blatt').innerHTML = h;
+  document.getElementById('klein').innerHTML = ['cB', 'sD', 'hK', 'dA', 'cZ', 's9', 'h8', 'd7']
+    .map(k => `<img src="${url(k)}">`).join('');
+}
+zeichne();
+</script>
+</body>
+</html>

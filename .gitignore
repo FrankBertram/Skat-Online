@@ -1,0 +1,7 @@
+node_modules/
+*.log
+.firebase/
+.claude/
+# ASS-Altenburger-Bilder: nicht öffentlich! Sie werden über die Verwaltung
+# geschützt in Firestore hochgeladen (nur für freigeschaltete Mitglieder).
+cards/

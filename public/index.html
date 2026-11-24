@@ -1,0 +1,956 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Skat-Online – 1. Sintherner Skatclub</title>
+<style>
+  :root {
+    --filz: #1f6b3a; --filz-dunkel: #15502b; --gold: #e3b341; --text: #1b1f24;
+    --hell: #f6f8fa; --rand: #d0d7de; --rot: #c62828; --gruen: #1a7f37;
+    --c: #111; --s: #111; --h: #d1242f; --d: #d1242f;
+    --kb: clamp(46px, 7.2vw, 78px);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: system-ui, "Segoe UI", Arial, sans-serif; color: var(--text); background: #e9eef2; }
+  button { font: inherit; cursor: pointer; border-radius: 8px; border: 1px solid var(--rand); background: #fff; padding: 8px 14px; }
+  button:hover:not(:disabled) { filter: brightness(0.95); }
+  button:disabled { opacity: .5; cursor: default; }
+  button.primaer { background: var(--gold); border-color: #b8892a; font-weight: 600; }
+  button.gefahr { background: #fff0f0; border-color: #e0a0a0; color: var(--rot); }
+  input, select { font: inherit; padding: 7px 9px; border: 1px solid var(--rand); border-radius: 8px; }
+  .versteckt { display: none !important; }
+
+  header.kopf { display: flex; align-items: center; gap: 12px; padding: 8px 16px; background: var(--filz-dunkel); color: #fff; flex-wrap: wrap; }
+  header.kopf h1 { font-size: 20px; margin: 0; flex: 1; }
+  header.kopf .nutzer { font-size: 14px; opacity: .9; }
+  header.kopf button { padding: 5px 10px; font-size: 14px; }
+
+  /* ── Anmeldung / Lobby ─────────────────────────── */
+  .karte-box { background: #fff; border-radius: 12px; padding: 18px 20px; box-shadow: 0 1px 4px rgba(0,0,0,.12); margin: 16px auto; max-width: 760px; }
+  .karte-box h2 { margin: 0 0 12px; font-size: 19px; }
+  .zeile { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin: 8px 0; }
+  .zeile label { font-size: 14px; color: #444; }
+  .tischliste { list-style: none; padding: 0; margin: 0; }
+  .tischliste li { display: flex; gap: 10px; align-items: center; padding: 8px 0; border-bottom: 1px solid #eee; }
+  .tischliste li:last-child { border-bottom: 0; }
+  .tischliste .info { flex: 1; font-size: 14px; }
+  .tischliste .code { font-family: Consolas, monospace; font-weight: 700; letter-spacing: 1px; }
+  .hinweis { font-size: 13px; color: #555; }
+
+  /* ── Tisch ─────────────────────────────────────── */
+  #tischAnsicht { display: grid; grid-template-columns: 1fr 340px; gap: 12px; padding: 12px; max-width: 1500px; margin: 0 auto; }
+  @media (max-width: 1050px) { #tischAnsicht { grid-template-columns: 1fr; } }
+  .infoleiste { grid-column: 1 / -1; display: flex; gap: 14px; align-items: center; flex-wrap: wrap; background: #fff; border-radius: 10px; padding: 8px 14px; font-size: 15px; }
+  .infoleiste .gross { font-weight: 700; }
+  .infoleiste .ansage { background: #fff6d6; border: 1px solid #e8cf7a; border-radius: 6px; padding: 2px 8px; }
+
+  .filz { position: relative; background: radial-gradient(ellipse at center, #2b8a4b 0%, var(--filz) 55%, var(--filz-dunkel) 100%);
+          border-radius: 22px; min-height: 560px; box-shadow: inset 0 0 40px rgba(0,0,0,.35); color: #fff;
+          display: grid; grid-template-columns: 1fr 1.6fr 1fr; grid-template-rows: auto 1fr auto auto; padding: 12px; gap: 6px; }
+  .sitz { background: rgba(0,0,0,.22); border-radius: 12px; padding: 8px 10px; min-width: 150px; align-self: center; justify-self: center; text-align: center; border: 2px solid transparent; }
+  .sitz.amzug { border-color: var(--gold); box-shadow: 0 0 14px rgba(227,179,65,.7); }
+  .sitz .nm { font-weight: 700; font-size: 16px; }
+  .sitz .rolle { font-size: 12px; opacity: .9; margin-top: 2px; }
+  .sitz .abz { display: inline-block; font-size: 11px; border-radius: 10px; padding: 1px 7px; margin: 3px 2px 0; background: rgba(255,255,255,.2); }
+  .sitz .abz.allein { background: var(--gold); color: #000; font-weight: 700; }
+  .sitz .abz.passe { background: rgba(0,0,0,.4); }
+  .sitz .ruecken { display: flex; justify-content: center; margin-top: 6px; height: 34px; }
+  .sitz .ruecken span { width: 22px; height: 33px; margin-left: -12px; border-radius: 3px;
+                        background: var(--ruecken) center / 100% 100% no-repeat; box-shadow: 0 1px 2px rgba(0,0,0,.4); }
+  .sitz .ruecken span:first-child { margin-left: 0; }
+  .sitz .offen { display: flex; flex-wrap: wrap; justify-content: center; gap: 2px; margin-top: 6px; --kb: 40px; }
+  #sitzOben { grid-column: 2; grid-row: 1; }
+  #sitzLinks { grid-column: 1; grid-row: 2; }
+  #sitzRechts { grid-column: 3; grid-row: 2; }
+  .mitte { grid-column: 2; grid-row: 2; position: relative; min-height: calc(var(--kb) * 3.6); margin-bottom: 8px; }
+  .karte.stichkarte { position: absolute; left: 50%; top: 50%; transition: transform .25s; }
+  .stichkarte.unten { transform: translate(-50%, -12%); }
+  .stichkarte.oben  { transform: translate(-50%, -88%); }
+  .stichkarte.links { transform: translate(-125%, -50%) rotate(-8deg); }
+  .stichkarte.rechts{ transform: translate(25%, -50%) rotate(8deg); }
+  .stichkarte.alt { opacity: .75; }
+  .mitte .meldung { position: absolute; inset: 0 0 auto 0; text-align: center; font-size: 14px; text-shadow: 0 1px 2px #000; }
+  .aktionen { grid-column: 1 / -1; grid-row: 3; text-align: center; min-height: 56px; display: flex; flex-direction: column; align-items: center; gap: 8px; justify-content: center; }
+  .aktionen .frage { font-size: 17px; font-weight: 600; text-shadow: 0 1px 2px #000; }
+  .aktionen .knoepfe { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; align-items: center; }
+  .aktionen .knoepfe button { min-width: 64px; }
+  .spielwahl button { min-width: 74px; font-size: 17px; }
+  .spielwahl button.gewaehlt { background: var(--gold); border-color: #8a6414; font-weight: 700; }
+  .aktionen label { font-size: 15px; text-shadow: 0 1px 2px #000; }
+  .meinbereich { grid-column: 1 / -1; grid-row: 4; text-align: center; }
+  .meinbereich .nm { font-weight: 700; }
+  .meinbereich.amzug .hand { background: rgba(227,179,65,.18); border-radius: 14px; }
+  .hand { display: flex; justify-content: center; flex-wrap: nowrap; padding: 22px 6px 6px; min-height: calc(var(--kb) * 1.53 + 30px); }
+  .hand .karte { margin-left: calc(var(--kb) * -0.3); }
+  .hand .karte:first-child { margin-left: 0; }
+  .hand .karte.spielbar { cursor: pointer; }
+  .hand .karte.spielbar:hover { transform: translateY(-12px); }
+  .hand .karte.gesperrt { filter: brightness(.6); }
+  .hand .karte.gewaehlt { transform: translateY(-20px); box-shadow: 0 0 0 3px var(--gold), 0 4px 10px rgba(0,0,0,.4); }
+  .hand.waehlbar .karte { cursor: pointer; }
+  .zuschauer { padding: 18px; font-size: 15px; opacity: .95; }
+
+  /* ── Karten (SVG oder ASS-Altenburger-Bilder, Seitenverhältnis 262 × 400) ── */
+  .karte { width: var(--kb); height: calc(var(--kb) * 1.527); border-radius: calc(var(--kb) * .07); overflow: hidden;
+           background: #fff; box-shadow: 0 2px 5px rgba(0,0,0,.45); position: relative; flex: 0 0 auto;
+           transition: transform .12s; user-select: none; }
+  .karte img { width: 100%; height: 100%; display: block; pointer-events: none; }
+  .klein { --kb: 40px; }
+  .mini { display: inline-block; font-weight: 700; padding: 0 2px; }
+  .mini.f-c { color: var(--c); } .mini.f-s { color: var(--s); } .mini.f-h { color: var(--h); } .mini.f-d { color: var(--d); }
+
+  /* ── Seitenleiste ───────────────────────────────── */
+  .seite { display: flex; flex-direction: column; gap: 12px; }
+  .seite .box { background: #fff; border-radius: 10px; padding: 10px 12px; }
+  .seite h3 { margin: 0 0 8px; font-size: 16px; }
+  .ergebnis.gew { border-left: 6px solid var(--gruen); }
+  .ergebnis.verl { border-left: 6px solid var(--rot); }
+  .ergebnis .titel { font-weight: 700; font-size: 16px; }
+  table.liste { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  table.liste th, table.liste td { padding: 3px 4px; border-bottom: 1px solid #eee; text-align: right; white-space: nowrap; }
+  table.liste th:nth-child(2), table.liste td:nth-child(2) { text-align: left; white-space: normal; }
+  table.liste tfoot td { font-weight: 700; border-top: 2px solid #999; }
+  table.liste tr.verl td.wert { color: var(--rot); }
+  table.liste .nb { color: #999; }
+  .listen-scroll { max-height: 420px; overflow-y: auto; }
+  .log { font-size: 13px; color: #444; }
+
+  #toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: #333; color: #fff;
+           padding: 10px 18px; border-radius: 10px; z-index: 50; max-width: 90vw; box-shadow: 0 3px 12px rgba(0,0,0,.4); }
+  #toast.fehler { background: var(--rot); }
+  .demo-leiste { background: #fff6d6; padding: 6px 14px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: 14px; }
+</style>
+</head>
+<body>
+
+<header class="kopf">
+  <h1>♣♠♥♦ Skat-Online</h1>
+  <span class="nutzer" id="nutzerName"></span>
+  <label style="font-size:14px">Karten:
+    <select id="kartenStil" style="padding:3px 6px; font-size:14px">
+      <option value="altenburger">ASS Altenburger</option>
+      <option value="eigen">Eigene (Turnierbild)</option>
+    </select></label>
+  <button id="btnLobby" class="versteckt">← Übersicht</button>
+  <button id="btnAbmelden" class="versteckt">Abmelden</button>
+</header>
+<div id="demoLeiste" class="demo-leiste versteckt"></div>
+
+<!-- Anmeldung -->
+<section id="anmeldung" class="karte-box versteckt">
+  <h2>Willkommen</h2>
+  <p>Hier spielen 3 oder 4 Spieler von verschiedenen PCs gemeinsam Skat (Wertung nach Seeger-Fabian).
+     Bitte mit dem Google-Konto anmelden.</p>
+  <button id="btnAnmelden" class="primaer">Mit Google anmelden</button>
+  <p class="hinweis">Zum Ausprobieren ohne Anmeldung: <a href="?demo">Übungsmodus (alle Plätze an einem PC)</a></p>
+</section>
+
+<!-- Kein Zugang -->
+<section id="gesperrt" class="karte-box versteckt">
+  <h2>🔒 Noch nicht freigeschaltet</h2>
+  <p>Skat-Online ist nur für Mitglieder des 1. Sintherner Skatclubs. Dein Google-Konto
+     <b id="gesperrtKonto"></b> ist noch nicht freigeschaltet.</p>
+  <p id="antragStatus" class="hinweis"></p>
+  <div class="zeile">
+    <button id="btnAntrag" class="primaer">Freischaltung beantragen</button>
+    <button id="btnAntragMail">✉️ Admin benachrichtigen</button>
+    <button id="btnGesperrtAbmelden">Abmelden</button>
+  </div>
+  <p class="hinweis">Freischalten können der Admin und die Spielleiter. Danach die Seite neu laden.</p>
+</section>
+
+<!-- Übersicht -->
+<section id="lobby" class="versteckt">
+  <div class="karte-box">
+    <h2>Dein Name am Tisch</h2>
+    <div class="zeile"><input id="spielerName" maxlength="20" placeholder="Name"></div>
+  </div>
+  <div class="karte-box">
+    <h2>Neuen Tisch anlegen</h2>
+    <div class="zeile">
+      <label>Tischname <input id="neuName" maxlength="40" placeholder="z. B. Dienstagsrunde"></label>
+    </div>
+    <div class="zeile">
+      <label><input type="radio" name="neuPlaetze" value="4" checked> 4 Spieler (Geber setzt aus)</label>
+      <label><input type="radio" name="neuPlaetze" value="3"> 3 Spieler</label>
+    </div>
+    <div class="zeile">
+      <label>Anzahl Spiele <input id="neuSpiele" type="number" min="0" max="999" value="48" style="width:90px"></label>
+      <span class="hinweis">(0 = ohne Ende; üblich 48 am 4er-, 36 am 3er-Tisch)</span>
+    </div>
+    <button id="btnAnlegen" class="primaer">Tisch anlegen</button>
+  </div>
+  <div class="karte-box">
+    <h2>Tisch beitreten</h2>
+    <div class="zeile">
+      <input id="beitretenCode" maxlength="6" placeholder="Tisch-Code" style="text-transform:uppercase; width:140px">
+      <button id="btnBeitreten" class="primaer">Beitreten</button>
+    </div>
+  </div>
+  <div class="karte-box">
+    <h2>Meine Tische</h2>
+    <ul class="tischliste" id="meineTische"><li class="hinweis">Lade …</li></ul>
+  </div>
+  <div class="karte-box">
+    <h2>Offene Tische (warten auf Spieler)</h2>
+    <ul class="tischliste" id="offeneTische"><li class="hinweis">Lade …</li></ul>
+  </div>
+  <div class="karte-box versteckt" id="verwaltung">
+    <h2>Verwaltung (Spielleiter)</h2>
+    <h3 style="font-size:16px;margin:8px 0">Anträge auf Freischaltung</h3>
+    <ul class="tischliste" id="antraegeListe"><li class="hinweis">Lade …</li></ul>
+    <h3 style="font-size:16px;margin:14px 0 8px">Freigeschaltete Mitglieder</h3>
+    <ul class="tischliste" id="mitgliederListe"><li class="hinweis">Lade …</li></ul>
+    <div id="bilderVerwaltung" class="versteckt">
+      <h3 style="font-size:16px;margin:14px 0 8px">Kartenbilder ASS Altenburger (nur Admin)</h3>
+      <p class="hinweis">Die Bilder liegen geschützt in Firestore und sind nur für freigeschaltete Mitglieder lesbar.
+        Alle 32 PNG-Dateien aus <code>C:\Temp\Skat-Online\cards</code> auswählen
+        (Namen wie <code>Kreuz-B.png</code>, <code>Herz-10.png</code>).</p>
+      <div class="zeile"><input type="file" id="bilderDateien" accept="image/png" multiple>
+        <span id="bilderStatus" class="hinweis"></span></div>
+    </div>
+  </div>
+</section>
+
+<!-- Tisch -->
+<section id="tischAnsicht" class="versteckt">
+  <div class="infoleiste" id="infoleiste"></div>
+  <div class="filz" id="filz">
+    <div class="sitz" id="sitzOben"></div>
+    <div class="sitz" id="sitzLinks"></div>
+    <div class="mitte" id="mitte"></div>
+    <div class="sitz" id="sitzRechts"></div>
+    <div class="aktionen" id="aktionen"></div>
+    <div class="meinbereich" id="meinbereich"></div>
+  </div>
+  <div class="seite">
+    <div class="box ergebnis versteckt" id="ergebnisBox"></div>
+    <div class="box">
+      <h3>Letzter Stich</h3>
+      <div id="letzterStich" class="hinweis">–</div>
+      <div class="log" id="logZeile" style="margin-top:6px"></div>
+    </div>
+    <div class="box">
+      <h3>Liste (Seeger-Fabian)</h3>
+      <div class="listen-scroll" id="listeBox"></div>
+    </div>
+  </div>
+</section>
+
+<div id="toast" class="versteckt"></div>
+
+<script src="skatlogik.js"></script>
+<script src="kartenbild.js"></script>
+<script type="module">
+const S = window.SkatLogik;
+const params = new URLSearchParams(location.search);
+const DEMO = params.has('demo');
+
+// ── Firebase (wie Spieltag-App) ─────────────────────────────────────
+const firebaseConfig = {
+  apiKey: "AIzaSyDmiQvDu0pxQYoidaZfRVY0BXZjLOHhw7w",
+  authDomain: "skatverein-b77ef.firebaseapp.com",
+  projectId: "skatverein-b77ef",
+  storageBucket: "skatverein-b77ef.firebasestorage.app",
+  messagingSenderId: "763387283518",
+  appId: "1:763387283518:web:9edf27d79876cf2059296f"
+};
+const REGION = 'europe-west3';
+const TISCHE = 'skatonline_tische';
+
+// ── Zustand ─────────────────────────────────────────────────────────
+let uid = null;
+let tisch = null;          // öffentliches Tisch-Dokument
+let meineKarten = [];      // eigene Hand
+let tischId = null;
+let beschaeftigt = false;
+let auswahlDruecken = [];  // beim Drücken gewählte Karten
+let gewaehlteArt = null;   // Spielart in der Ansage
+let optionen = { schneider: false, schwarz: false, ouvert: false };
+let letzterStichNr = 0, zeigeStichBis = 0;
+let abmeldenTisch = () => {};
+let backend = null;
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+function zeige(id) {
+  ['anmeldung', 'gesperrt', 'lobby', 'tischAnsicht'].forEach(x => $(x).classList.toggle('versteckt', x !== id));
+  $('btnLobby').classList.toggle('versteckt', id !== 'tischAnsicht' || DEMO);
+}
+
+let toastTimer = null;
+function toast(text, istFehler) {
+  const t = $('toast');
+  t.textContent = text;
+  t.className = istFehler ? 'fehler' : '';
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.add('versteckt'), istFehler ? 5000 : 2500);
+}
+
+async function aktion(daten) {
+  if (beschaeftigt) return;
+  beschaeftigt = true;
+  render();
+  try {
+    return await backend.aktion(Object.assign({ tischId }, daten));
+  } catch (e) {
+    toast(e.message || String(e), true);
+  } finally {
+    beschaeftigt = false;
+    render();
+  }
+}
+
+// ── Karten-Darstellung ──────────────────────────────────────────────
+// Kartenbild: ASS-Altenburger-Bilder (geschützt in Firestore, nur für Mitglieder
+// geladen) oder eigene SVG-Karten (kartenbild.js, auch Ersatz solange keine Bilder da sind)
+const FARB_DATEI = { c: 'Kreuz', s: 'Pik', h: 'Herz', d: 'Karo' };
+const bildName = k => `${FARB_DATEI[k[0]]}-${k[1] === 'Z' ? '10' : k[1]}`;
+let altenburgerBilder = {};          // 'Kreuz-B' → blob:-URL
+let gewuenschterStil = localStorage.getItem('skatonline_karten') === 'eigen' ? 'eigen' : 'altenburger';
+let kartenStil = 'eigen';
+const kartenBild = k => (kartenStil === 'altenburger' && altenburgerBilder[bildName(k)]) || window.KartenBild.url(k);
+function altenburgerVorhanden() { return Object.keys(altenburgerBilder).length >= 32; }
+function setzeKartenStil(stil) {
+  if (stil) { gewuenschterStil = stil === 'eigen' ? 'eigen' : 'altenburger'; localStorage.setItem('skatonline_karten', gewuenschterStil); }
+  kartenStil = gewuenschterStil === 'altenburger' && altenburgerVorhanden() ? 'altenburger' : 'eigen';
+  const opt = $('kartenStil').querySelector('option[value="altenburger"]');
+  opt.disabled = !altenburgerVorhanden();
+  opt.textContent = 'ASS Altenburger' + (altenburgerVorhanden() ? '' : ' (nur Mitglieder)');
+  $('kartenStil').value = kartenStil;
+  // Kurzschreibweise (♥10 usw.) in den Farben des gewählten Blatts
+  const r = document.documentElement.style;
+  if (kartenStil === 'altenburger') { r.setProperty('--s', '#111'); r.setProperty('--d', '#d1242f'); }
+  else { r.setProperty('--s', window.KartenBild.FARBE.s); r.setProperty('--d', '#d48a00'); }
+  render();
+}
+document.documentElement.style.setProperty('--ruecken', `url("${window.KartenBild.rueckenUrl()}")`);
+function karteHTML(k, klassen = '', attr = '') {
+  const titel = S.FARB_NAME[k[0]] + ' ' + S.WERT_NAME[k[1]];
+  return `<div class="karte ${klassen}" data-k="${k}" ${attr} title="${titel}"><img src="${kartenBild(k)}" alt="${titel}" draggable="false"></div>`;
+}
+const miniKarte = k => `<span class="mini f-${k[0]}">${S.karteText(k)}</span>`;
+
+// ── Hilfen ──────────────────────────────────────────────────────────
+function meinPlatz() {
+  if (!tisch || !uid) return -1;
+  return tisch.spieler.findIndex(s => s && s.uid === uid);
+}
+function nameVon(p) { return (tisch.spieler[p] && tisch.spieler[p].name) || ('Platz ' + (p + 1)); }
+function rolleVon(p) {
+  if (!tisch.aktive || tisch.status !== 'laeuft' && tisch.phase !== 'beendet') return '';
+  const i = tisch.aktive.indexOf(p);
+  if (i >= 0) return ['Vorhand', 'Mittelhand', 'Hinterhand'][i] + (tisch.plaetze === 3 && p === tisch.geber ? ' · Geber' : '');
+  return p === tisch.geber ? 'Geber – setzt aus' : '';
+}
+// Plätze relativ zum Betrachter: unten = ich, dann im Uhrzeigersinn links, oben, rechts
+function positionen() {
+  const ich = Math.max(0, meinPlatz());
+  const n = tisch.plaetze;
+  const pos = {};
+  pos[ich] = 'unten';
+  if (n === 4) { pos[(ich + 1) % 4] = 'links'; pos[(ich + 2) % 4] = 'oben'; pos[(ich + 3) % 4] = 'rechts'; }
+  else { pos[(ich + 1) % 3] = 'links'; pos[(ich + 2) % 3] = 'rechts'; }
+  return pos;
+}
+function aktuelleArt() {
+  if (tisch.spiel) return tisch.spiel.art;
+  if (tisch.phase === 'druecken' && gewaehlteArt) return gewaehlteArt;
+  return null;
+}
+
+// ── Rendering ───────────────────────────────────────────────────────
+function render() {
+  if (!tisch) return;
+  const t = tisch;
+  const ich = meinPlatz();
+  const pos = positionen();
+
+  // Infoleiste
+  let info = `<span class="gross">${esc(t.name)}</span>`;
+  if (!DEMO) info += `<span>Code: <b style="font-family:Consolas,monospace;letter-spacing:1px">${esc(t.code || tischId)}</b>
+     <button id="btnLink" style="padding:2px 8px;font-size:13px">Link kopieren</button></span>`;
+  if (t.status !== 'warten') info += `<span>Spiel <b>${t.spielNr}</b>${t.maxSpiele ? ' / ' + t.maxSpiele : ''}</span>
+     <span>Geber: <b>${esc(nameVon(t.geber))}</b></span>`;
+  if (t.reizwert) info += `<span>Reizwert: <b>${t.reizwert}</b></span>`;
+  if (t.spiel) info += `<span class="ansage">${esc(nameVon(t.alleinspieler))} spielt <b>${esc(S.spielText(t.spiel))}</b></span>`;
+  if (t.phase === 'spielen') info += `<span>Stich ${Math.min(t.stichNr + 1, 10)} / 10</span>`;
+  if (t.erstelltVon === uid && t.status !== 'beendet' && !DEMO) info += `<button id="btnTischBeenden" class="gefahr" style="margin-left:auto;padding:3px 10px;font-size:13px">Tisch beenden</button>`;
+  $('infoleiste').innerHTML = info;
+  const bl = $('btnLink');
+  if (bl) bl.onclick = () => {
+    const url = location.origin + location.pathname + '?tisch=' + (t.code || tischId);
+    navigator.clipboard.writeText(url).then(() => toast('Link kopiert – an die Mitspieler schicken'));
+  };
+  const bb = $('btnTischBeenden');
+  if (bb) bb.onclick = () => { if (confirm('Tisch wirklich beenden? Danach kann nicht weitergespielt werden.')) aktion({ typ: 'beenden' }); };
+
+  // Sitze
+  const sitzEl = { oben: $('sitzOben'), links: $('sitzLinks'), rechts: $('sitzRechts') };
+  Object.values(sitzEl).forEach(el => { el.innerHTML = ''; el.classList.add('versteckt'); el.classList.remove('amzug'); });
+  for (let p = 0; p < t.plaetze; p++) {
+    const wo = pos[p];
+    if (wo === 'unten') continue;
+    const el = sitzEl[wo];
+    el.classList.remove('versteckt');
+    el.classList.toggle('amzug', t.amZug === p);
+    el.innerHTML = sitzHTML(p);
+  }
+
+  renderMitte(pos);
+  renderAktionen(ich);
+  renderMeinBereich(ich);
+  renderSeite();
+  verbindeSitzKnoepfe();
+}
+
+function sitzHTML(p) {
+  const t = tisch;
+  const s = t.spieler[p];
+  if (!s) {
+    const kannSetzen = t.status === 'warten' && meinPlatz() < 0;
+    return `<div class="nm">Platz ${p + 1} frei</div>` +
+      (kannSetzen ? `<button data-platz="${p}" class="primaer" style="margin-top:6px">Hier hinsetzen</button>` : '');
+  }
+  let h = `<div class="nm">${esc(s.name)}</div><div class="rolle">${esc(rolleVon(p))}</div>`;
+  if (t.alleinspieler === p) h += `<span class="abz allein">Alleinspieler</span>`;
+  if (t.phase === 'reizen' && t.reizen) {
+    const r = t.reizen;
+    if ((r.gepasst || []).includes(p)) h += `<span class="abz passe">passe</span>`;
+    else if (r.sager === p && r.wert && r.frage === 'hoeren') h += `<span class="abz">sagt ${r.wert}</span>`;
+    else if (r.hoerer === p && r.frage === 'sagen' && r.wert) h += `<span class="abz">hält ${r.wert}</span>`;
+  }
+  if ((t.phase === 'spielen' || t.phase === 'spielende' || t.phase === 'beendet') && t.aktive.includes(p) && t.spiel) {
+    h += `<span class="abz">${t.stichZahl[p]} Stiche</span>`;
+  }
+  if (t.offeneKarten && t.alleinspieler === p) {
+    h += `<div class="offen">${S.sortiereHand(t.offeneKarten, t.spiel.art).map(k => karteHTML(k)).join('')}</div>`;
+  } else if (t.kartenAnzahl[p] > 0) {
+    h += `<div class="ruecken">${'<span></span>'.repeat(t.kartenAnzahl[p])}</div>`;
+  }
+  return h;
+}
+
+function renderMitte(pos) {
+  const t = tisch;
+  let h = '';
+  let karten = t.stich || [];
+  let alt = false;
+  if (karten.length === 0 && t.letzterStich && Date.now() < zeigeStichBis) { karten = t.letzterStich.karten; alt = true; }
+  karten.forEach(s => { h += karteHTML(s.karte, 'stichkarte ' + pos[s.platz] + (alt ? ' alt' : '')); });
+  let meldung = '';
+  if (alt) meldung = `Stich an ${esc(nameVon(t.letzterStich.gewinner))}`;
+  else if (t.status === 'warten') meldung = `Warten auf Spieler (${t.spieler.filter(Boolean).length} / ${t.plaetze})`;
+  else if (t.phase === 'spielen' && t.amZug != null) meldung = `${esc(nameVon(t.amZug))} ist am Zug`;
+  h += `<div class="meldung">${meldung}</div>`;
+  $('mitte').innerHTML = h;
+}
+
+function knopf(text, daten, klasse = '') {
+  return `<button class="${klasse}" data-aktion='${esc(JSON.stringify(daten))}' ${beschaeftigt ? 'disabled' : ''}>${text}</button>`;
+}
+
+function renderAktionen(ich) {
+  const t = tisch;
+  const el = $('aktionen');
+  let h = '';
+  const amZug = ich >= 0 && t.amZug === ich;
+
+  if (t.status === 'warten') {
+    const voll = t.spieler.every(Boolean);
+    if (ich < 0) h = `<div class="frage">Wähle einen freien Platz.</div>`;
+    else {
+      h = `<div class="frage">${voll ? 'Alle Plätze besetzt.' : 'Warten auf Mitspieler – Code oder Link weitergeben.'}</div><div class="knoepfe">`;
+      if (voll) h += knopf('Spiel starten', { typ: 'starten' }, 'primaer');
+      if (!DEMO) h += knopf('Platz verlassen', { typ: 'verlassen' });
+      h += '</div>';
+    }
+  } else if (t.phase === 'reizen') {
+    const r = t.reizen;
+    if (amZug && r.frage === 'sagen') {
+      const hoeher = S.REIZWERTE.filter(w => w > r.wert);
+      h = `<div class="frage">Du reizt ${esc(nameVon(r.hoerer))}${r.wert ? ' (zuletzt ' + r.wert + ')' : ''}</div><div class="knoepfe">`;
+      hoeher.slice(0, 4).forEach((w, i) => { h += knopf(String(w), { typ: 'sagen', wert: w }, i === 0 ? 'primaer' : ''); });
+      h += `<select id="reizAuswahl" ${beschaeftigt ? 'disabled' : ''}><option value="">höher …</option>${hoeher.slice(4).map(w => `<option>${w}</option>`).join('')}</select>`;
+      h += knopf('Passe', { typ: 'passe' }, 'gefahr') + '</div>';
+    } else if (amZug && r.frage === 'hoeren') {
+      h = `<div class="frage">${esc(nameVon(r.sager))} sagt ${r.wert}</div><div class="knoepfe">` +
+        knopf('Ja', { typ: 'ja' }, 'primaer') + knopf('Passe', { typ: 'passe' }, 'gefahr') + '</div>';
+    } else if (amZug && r.frage === 'achtzehn') {
+      h = `<div class="frage">Alle haben gepasst. Spielst du für 18?</div><div class="knoepfe">` +
+        knopf('18 spielen', { typ: 'ja' }, 'primaer') + knopf('Passe (einpassen)', { typ: 'passe' }, 'gefahr') + '</div>';
+    } else {
+      let txt;
+      if (r.frage === 'sagen') txt = `${esc(nameVon(r.sager))} reizt ${esc(nameVon(r.hoerer))}`;
+      else if (r.frage === 'hoeren') txt = `${esc(nameVon(r.sager))} sagt ${r.wert} – ${esc(nameVon(r.hoerer))} hört`;
+      else txt = `${esc(nameVon(r.hoerer))} überlegt, ob 18 gespielt wird`;
+      h = `<div class="frage">Reizen: ${txt}</div>`;
+    }
+  } else if (t.phase === 'skataufnahme') {
+    if (amZug) {
+      h = `<div class="frage">Du hast das Reizen gewonnen (${t.reizwert}). Skat aufnehmen oder Hand spielen?</div>
+           <div class="knoepfe">${knopf('Skat aufnehmen', { typ: 'aufnehmen' }, 'primaer')}</div>` + ansageHTML(true);
+    } else h = `<div class="frage">${esc(nameVon(t.alleinspieler))} überlegt: Skat aufnehmen oder Hand?</div>`;
+  } else if (t.phase === 'druecken') {
+    if (amZug) {
+      h = `<div class="frage">Wähle 2 Karten zum Drücken (${auswahlDruecken.length}/2) und sage dein Spiel an.</div>` + ansageHTML(false);
+    } else h = `<div class="frage">${esc(nameVon(t.alleinspieler))} hat den Skat aufgenommen und drückt.</div>`;
+  } else if (t.phase === 'spielen') {
+    if (amZug) h = `<div class="frage">Du bist am Zug – spiele eine Karte.</div>`;
+  } else if (t.phase === 'spielende') {
+    h = `<div class="frage">Spiel ${t.spielNr} beendet.</div>`;
+    if (ich >= 0) h += `<div class="knoepfe">${knopf('Nächstes Spiel geben', { typ: 'weiter' }, 'primaer')}</div>`;
+  } else if (t.phase === 'beendet') {
+    h = `<div class="frage">Die Liste ist beendet. Ergebnis siehe Liste rechts.</div>`;
+  }
+  el.innerHTML = h;
+
+  el.querySelectorAll('button[data-aktion]').forEach(b => {
+    b.onclick = () => aktion(JSON.parse(b.dataset.aktion));
+  });
+  const sel = $('reizAuswahl');
+  if (sel) sel.onchange = () => { if (sel.value) aktion({ typ: 'sagen', wert: parseInt(sel.value, 10) }); };
+  verbindeAnsage();
+}
+
+function ansageHTML(hand) {
+  const arten = [['kreuz', '♣ Kreuz'], ['pik', '♠ Pik'], ['herz', '♥ Herz'], ['karo', '♦ Karo'], ['grand', 'Grand'], ['null', 'Null']];
+  let h = `<div class="knoepfe spielwahl">`;
+  arten.forEach(([a, txt]) => { h += `<button data-art="${a}" class="${gewaehlteArt === a ? 'gewaehlt' : ''}">${txt}</button>`; });
+  h += `</div><div class="knoepfe">`;
+  const istNull = gewaehlteArt === 'null';
+  if (hand && !istNull) {
+    h += `<label><input type="checkbox" data-opt="schneider" ${optionen.schneider ? 'checked' : ''}> Schneider angesagt</label>`;
+    h += `<label><input type="checkbox" data-opt="schwarz" ${optionen.schwarz ? 'checked' : ''}> Schwarz angesagt</label>`;
+  }
+  if (hand || istNull) h += `<label><input type="checkbox" data-opt="ouvert" ${optionen.ouvert ? 'checked' : ''}> Ouvert</label>`;
+  const bereit = gewaehlteArt && (hand || auswahlDruecken.length === 2);
+  h += `<button id="btnAnsagen" class="primaer" ${bereit && !beschaeftigt ? '' : 'disabled'}>${hand ? 'Hand ansagen' : 'Ansagen'}</button></div>`;
+  return h;
+}
+
+function verbindeAnsage() {
+  document.querySelectorAll('[data-art]').forEach(b => {
+    b.onclick = () => { gewaehlteArt = b.dataset.art; render(); };
+  });
+  document.querySelectorAll('[data-opt]').forEach(c => {
+    c.onchange = () => { optionen[c.dataset.opt] = c.checked; };
+  });
+  const b = $('btnAnsagen');
+  if (!b) return;
+  b.onclick = async () => {
+    const t = tisch;
+    const hand = t.phase === 'skataufnahme';
+    const daten = { typ: 'ansagen', art: gewaehlteArt, ouvert: optionen.ouvert };
+    if (gewaehlteArt !== 'null') {
+      daten.ouvert = hand && optionen.ouvert;
+      daten.schneider = hand && (optionen.schneider || optionen.schwarz || daten.ouvert);
+      daten.schwarz = hand && (optionen.schwarz || daten.ouvert);
+    }
+    if (!hand) daten.druecken = auswahlDruecken.slice();
+    if (gewaehlteArt === 'null') {
+      const nw = S.nullWert(hand, daten.ouvert);
+      if (nw < t.reizwert && !confirm(`Null${hand ? ' Hand' : ''}${daten.ouvert ? ' ouvert' : ''} ist nur ${nw} wert – du hast bis ${t.reizwert} gereizt. Das Spiel ist damit verloren. Trotzdem ansagen?`)) return;
+    }
+    if (daten.ouvert && gewaehlteArt !== 'null' && !confirm('Ouvert heißt: Hand, Schneider und Schwarz angesagt, deine Karten liegen offen. Ansagen?')) return;
+    const r = await aktion(daten);
+    if (r !== undefined) { auswahlDruecken = []; }
+  };
+}
+
+function renderMeinBereich(ich) {
+  const t = tisch;
+  const el = $('meinbereich');
+  if (ich < 0) {
+    el.innerHTML = `<div class="zuschauer">Du schaust zu.</div>`;
+    return;
+  }
+  let kopf = `<span class="nm">${esc(nameVon(ich))}</span> <span class="hinweis" style="color:#dfe">${esc(rolleVon(ich))}</span>`;
+  if (t.alleinspieler === ich) kopf += ` <span class="abz allein" style="background:var(--gold);color:#000;border-radius:10px;padding:1px 7px;font-size:12px">Alleinspieler</span>`;
+  if ((t.phase === 'spielen' || t.phase === 'spielende') && t.aktive.includes(ich) && t.spiel) kopf += ` · ${t.stichZahl[ich]} Stiche`;
+  const sitzt = t.status === 'laeuft' && t.aktive && !t.aktive.includes(ich);
+  if (sitzt && t.phase !== 'spielende') {
+    el.innerHTML = `<div class="zuschauer">${kopf}<br>Du hast gegeben und setzt dieses Spiel aus – du siehst nur die gespielten Karten.</div>`;
+    return;
+  }
+  const art = aktuelleArt();
+  const karten = S.sortiereHand(meineKarten, art);
+  const spielen = t.phase === 'spielen' && t.amZug === ich && !beschaeftigt;
+  const erlaubt = spielen ? S.gueltigeKarten(meineKarten, t.stich, t.spiel.art) : [];
+  const druecken = t.phase === 'druecken' && t.alleinspieler === ich;
+  auswahlDruecken = auswahlDruecken.filter(k => meineKarten.includes(k));
+  let hand = karten.map(k => {
+    let kl = '';
+    if (spielen) kl = erlaubt.includes(k) ? 'spielbar' : 'gesperrt';
+    if (druecken && auswahlDruecken.includes(k)) kl += ' gewaehlt';
+    return karteHTML(k, kl);
+  }).join('');
+  el.innerHTML = `<div class="hand ${druecken ? 'waehlbar' : ''}" id="meineHand">${hand}</div><div>${kopf}</div>`;
+  el.classList.toggle('amzug', t.amZug === ich);
+  $('meineHand').querySelectorAll('.karte').forEach(kEl => {
+    kEl.onclick = () => {
+      const k = kEl.dataset.k;
+      if (druecken) {
+        if (auswahlDruecken.includes(k)) auswahlDruecken = auswahlDruecken.filter(x => x !== k);
+        else if (auswahlDruecken.length < 2) auswahlDruecken.push(k);
+        render();
+      } else if (spielen && erlaubt.includes(k)) {
+        aktion({ typ: 'karte', karte: k });
+      }
+    };
+  });
+}
+
+function renderSeite() {
+  const t = tisch;
+  // Ergebnis des letzten Spiels
+  const eb = $('ergebnisBox');
+  const e = t.ergebnis;
+  if (e && (t.phase === 'spielende' || t.phase === 'beendet')) {
+    eb.classList.remove('versteckt');
+    eb.classList.toggle('gew', !!e.gewonnen);
+    eb.classList.toggle('verl', !e.eingepasst && !e.gewonnen);
+    if (e.eingepasst) {
+      eb.innerHTML = `<div class="titel">Eingepasst</div><div>Skat: ${e.skat.map(miniKarte).join(' ')}</div>`;
+    } else {
+      let h = `<div class="titel">${esc(nameVon(e.alleinspieler))} ${e.gewonnen ? 'gewinnt' : 'verliert'}</div>
+        <div>${esc(e.text)} – Spielwert <b>${e.wert}</b></div>`;
+      if (e.augenAllein != null) h += `<div>Augen: ${e.augenAllein} : ${e.augenGegner} · Stiche: ${e.sticheAllein}</div>`;
+      h += `<div>Skat: ${e.skat.map(miniKarte).join(' ')}${e.gedrueckt && e.gedrueckt.join() !== e.skat.join() ? ' · gedrückt: ' + e.gedrueckt.map(miniKarte).join(' ') : ''}</div>`;
+      h += `<div>Punkte: ${e.punkte.map((p, i) => p ? esc(nameVon(i)) + ' ' + (p > 0 ? '+' : '') + p : '').filter(Boolean).join(', ')}</div>`;
+      eb.innerHTML = h;
+    }
+  } else eb.classList.add('versteckt');
+
+  // Letzter Stich
+  $('letzterStich').innerHTML = t.letzterStich
+    ? t.letzterStich.karten.map(s => miniKarte(s.karte)).join(' ') + ` → ${esc(nameVon(t.letzterStich.gewinner))}`
+    : '–';
+  $('logZeile').textContent = t.log || '';
+
+  // Liste
+  const n = t.plaetze;
+  const kurz = p => esc(nameVon(p).split(/[\s,]+/)[0].slice(0, 8));
+  let h = `<table class="liste"><thead><tr><th>Nr</th><th>Spiel</th><th>Wert</th>`;
+  for (let p = 0; p < n; p++) h += `<th>${kurz(p)}</th>`;
+  h += `</tr></thead><tbody>`;
+  const laufend = new Array(n).fill(0);
+  (t.liste || []).forEach(z => {
+    h += `<tr class="${z.gewonnen === false ? 'verl' : ''}"><td>${z.nr}</td>`;
+    if (z.eingepasst) h += `<td class="nb">eingepasst</td><td></td>`;
+    else h += `<td title="${esc(z.text)}">${kurz(z.alleinspieler)}: ${esc(z.text.replace(/ \(.*\)/, ''))}</td><td class="wert">${z.gewonnen ? '' : '−'}${z.wert}</td>`;
+    for (let p = 0; p < n; p++) {
+      if (!z.eingepasst && p === z.alleinspieler) laufend[p] += z.gewonnen ? z.wert : -2 * z.wert;
+      const zeigen = !z.eingepasst && p === z.alleinspieler;
+      h += `<td class="${zeigen ? '' : 'nb'}">${zeigen ? laufend[p] : (p === z.geber && n === 4 ? '·' : '')}</td>`;
+    }
+    h += `</tr>`;
+  });
+  const s = S.summen(t);
+  const fuss = (titel, f) => `<tr><td></td><td style="text-align:left">${titel}</td><td></td>${s.map(x => `<td>${f(x)}</td>`).join('')}</tr>`;
+  h += `</tbody><tfoot>` +
+    fuss('Spielpunkte', x => x.spielpunkte) +
+    fuss('gew. / verl.', x => x.gewonnen + ' / ' + x.verloren) +
+    fuss(`<span title="Spielpunkte ± 50 je gewonnenem/verlorenem Spiel, + ${n === 3 ? 40 : 30} je verlorenem Spiel der anderen">Gesamt (Seeger)</span>`, x => `<b>${x.gesamt}</b>`) +
+    `</tfoot></table>`;
+  $('listeBox').innerHTML = h;
+}
+
+function verbindeSitzKnoepfe() {
+  document.querySelectorAll('button[data-platz]').forEach(b => {
+    b.onclick = () => aktion({ typ: 'beitreten', platz: parseInt(b.dataset.platz, 10), spielerName: spielerName() });
+  });
+}
+
+function spielerName() {
+  return ($('spielerName').value || '').trim() || localStorage.getItem('skatonline_name') || 'Spieler';
+}
+
+// Neuer Stich → kurz in der Mitte stehen lassen; neues Spiel → Ansage zurücksetzen
+let letzteSpielNr = null;
+function tischGeaendert(neu) {
+  const alt = tisch;
+  tisch = neu;
+  if (neu.letzterStich && neu.letzterStich.nr !== letzterStichNr && (!alt || alt.spielNr === neu.spielNr)) {
+    zeigeStichBis = Date.now() + 1600;
+    setTimeout(render, 1650);
+  }
+  letzterStichNr = neu.letzterStich ? neu.letzterStich.nr : 0;
+  if (neu.spielNr !== letzteSpielNr || neu.phase === 'skataufnahme' && (!alt || alt.phase !== 'skataufnahme')) {
+    letzteSpielNr = neu.spielNr;
+    gewaehlteArt = null; auswahlDruecken = [];
+    optionen = { schneider: false, schwarz: false, ouvert: false };
+  }
+  render();
+}
+
+// ═════════════════════════════════════════════════════════════════════
+// Übungsmodus (?demo): alles lokal, alle Plätze an einem PC
+// ═════════════════════════════════════════════════════════════════════
+function starteDemo() {
+  const plaetze = params.get('demo') === '3' ? 3 : 4;
+  let welt = S.neuerTisch({ name: 'Übungstisch', plaetze, maxSpiele: plaetze === 4 ? 48 : 36, uid: 'demo0' });
+  ['Anna', 'Bernd', 'Carla', 'Dieter'].slice(0, plaetze).forEach((nm, i) => S.beitreten(welt, 'demo' + i, nm, i));
+  let ansicht = 0, folgen = true;
+  const aktualisieren = () => {
+    if (folgen && welt.tisch.amZug != null) ansicht = welt.tisch.amZug;
+    uid = 'demo' + ansicht;
+    meineKarten = welt.haende[ansicht].slice();
+    leiste();
+    tischGeaendert(JSON.parse(JSON.stringify(welt.tisch)));
+  };
+  const leiste = () => {
+    let h = `<b>Übungsmodus</b> – alle Plätze an diesem PC. Ansicht: `;
+    welt.tisch.spieler.forEach((s, i) => { h += `<button data-ansicht="${i}" class="${i === ansicht ? 'primaer' : ''}" style="padding:3px 10px">${esc(s.name)}</button>`; });
+    h += `<label><input type="checkbox" id="demoFolgen" ${folgen ? 'checked' : ''}> Ansicht folgt dem Spieler am Zug</label>
+          <a href="?demo=${plaetze === 4 ? 3 : 4}">${plaetze === 4 ? '3' : '4'}er-Tisch</a>`;
+    $('demoLeiste').innerHTML = h;
+    $('demoLeiste').querySelectorAll('[data-ansicht]').forEach(b => b.onclick = () => { ansicht = +b.dataset.ansicht; folgen = false; aktualisieren(); });
+    $('demoFolgen').onchange = e => { folgen = e.target.checked; aktualisieren(); };
+  };
+  backend = {
+    aktion: async (d) => {
+      const w = structuredClone(welt);
+      S.aktion(w, ansicht, d);   // wirft bei ungültigen Zügen
+      welt = w;
+      setTimeout(aktualisieren, 0);
+      return { ok: true };
+    }
+  };
+  $('demoLeiste').classList.remove('versteckt');
+  $('nutzerName').textContent = 'Übungsmodus';
+  tischId = 'DEMO';
+  zeige('tischAnsicht');
+  aktualisieren();
+}
+
+// ═════════════════════════════════════════════════════════════════════
+// Online (Firebase)
+// ═════════════════════════════════════════════════════════════════════
+async function starteOnline() {
+  const [{ initializeApp }, fs, au, fn] = await Promise.all([
+    import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js'),
+    import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js'),
+    import('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js'),
+    import('https://www.gstatic.com/firebasejs/10.12.2/firebase-functions.js')
+  ]);
+  const app = initializeApp(firebaseConfig);
+  const db = fs.getFirestore(app);
+  const auth = au.getAuth(app);
+  const callable = fn.httpsCallable(fn.getFunctions(app, REGION), 'skatAktion');
+
+  backend = {
+    aktion: async (d) => {
+      try { return (await callable(d)).data; }
+      catch (e) { throw new Error(e.message || 'Fehler bei der Verbindung'); }
+    }
+  };
+
+  const ADMIN_UID = 'ERwEUD2Dsddsij05p32oCb6EGs53';
+  const ADMIN_EMAIL = 'frank.bertram@koeln.de';
+  let rolle = { zugang: false, verwalter: false, admin: false };
+
+  async function pruefeZugang(user) {
+    if (user.uid === ADMIN_UID) return { zugang: true, verwalter: true, admin: true };
+    const [m, sl] = await Promise.all([
+      fs.getDoc(fs.doc(db, 'skatonline_mitglieder', user.uid)).catch(() => null),
+      fs.getDoc(fs.doc(db, 'spielleiter', user.uid)).catch(() => null)
+    ]);
+    const istSL = !!(sl && sl.exists() && (sl.data().verein || 'sinthern') === 'sinthern');
+    return { zugang: istSL || !!(m && m.exists()), verwalter: istSL, admin: false };
+  }
+
+  async function ladeKartenbilder() {
+    try {
+      const snap = await fs.getDocs(fs.collection(db, 'skatonline_kartenbilder'));
+      Object.values(altenburgerBilder).forEach(u => URL.revokeObjectURL(u));
+      altenburgerBilder = {};
+      snap.forEach(d => {
+        const x = d.data();
+        if (x.daten) altenburgerBilder[d.id] = URL.createObjectURL(new Blob([x.daten.toUint8Array()], { type: x.typ || 'image/png' }));
+      });
+    } catch (e) { console.warn('Kartenbilder', e); }
+    setzeKartenStil();
+  }
+
+  // ── Kein Zugang: Antrag stellen ──
+  async function zeigeGesperrt(user) {
+    zeige('gesperrt');
+    $('gesperrtKonto').textContent = user.email || user.displayName || '';
+    const ref = fs.doc(db, 'skatonline_antraege', user.uid);
+    const a = await fs.getDoc(ref).catch(() => null);
+    $('antragStatus').textContent = a && a.exists()
+      ? 'Antrag gestellt am ' + new Date(a.data().zeit).toLocaleString('de-DE') + ' – bitte warten, bis ein Spielleiter freischaltet.'
+      : '';
+    $('btnAntrag').onclick = async () => {
+      try {
+        await fs.setDoc(ref, { name: user.displayName || spielerName(), email: user.email || '', zeit: Date.now() });
+        toast('Antrag gestellt');
+        zeigeGesperrt(user);
+      } catch (e) { toast('Antrag fehlgeschlagen: ' + e.message, true); }
+    };
+    $('btnAntragMail').onclick = () => {
+      const text = `Hallo,\n\nbitte schalte mich für Skat-Online frei.\n\nName: ${user.displayName || ''}\nE-Mail: ${user.email || ''}\nUID: ${user.uid}\n`;
+      location.href = `mailto:${ADMIN_EMAIL}?subject=${encodeURIComponent('Skat-Online Freischaltung')}&body=${encodeURIComponent(text)}`;
+    };
+    $('btnGesperrtAbmelden').onclick = () => au.signOut(auth);
+  }
+
+  // ── Verwaltung für Spielleiter/Admin ──
+  function verwaltungAbonnieren() {
+    $('verwaltung').classList.toggle('versteckt', !rolle.verwalter);
+    $('bilderVerwaltung').classList.toggle('versteckt', !rolle.admin);
+    if (!rolle.verwalter) return;
+    lobbyAbos.push(fs.onSnapshot(fs.collection(db, 'skatonline_antraege'), snap => {
+      const liste = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (a.zeit || 0) - (b.zeit || 0));
+      $('antraegeListe').innerHTML = liste.length ? liste.map(a => `<li><span class="info"><b>${esc(a.name || '–')}</b> · ${esc(a.email)}<br>
+          <span class="hinweis">${new Date(a.zeit).toLocaleString('de-DE')}</span></span>
+          <button class="primaer" data-frei="${esc(a.id)}">Freischalten</button><button class="gefahr" data-ablehnen="${esc(a.id)}">Ablehnen</button></li>`).join('')
+        : '<li class="hinweis">Keine offenen Anträge.</li>';
+      $('antraegeListe').querySelectorAll('[data-frei]').forEach(b => b.onclick = async () => {
+        const a = liste.find(x => x.id === b.dataset.frei);
+        try {
+          await fs.setDoc(fs.doc(db, 'skatonline_mitglieder', a.id), { name: a.name || '', email: a.email || '', freigeschaltetAm: Date.now(), von: uid });
+          await fs.deleteDoc(fs.doc(db, 'skatonline_antraege', a.id));
+          toast((a.name || a.email) + ' freigeschaltet');
+        } catch (e) { toast(e.message, true); }
+      });
+      $('antraegeListe').querySelectorAll('[data-ablehnen]').forEach(b => b.onclick = () => {
+        if (confirm('Antrag ablehnen?')) fs.deleteDoc(fs.doc(db, 'skatonline_antraege', b.dataset.ablehnen)).catch(e => toast(e.message, true));
+      });
+    }, e => { $('antraegeListe').innerHTML = `<li class="hinweis">Fehler: ${esc(e.message)}</li>`; }));
+    lobbyAbos.push(fs.onSnapshot(fs.collection(db, 'skatonline_mitglieder'), snap => {
+      const liste = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => String(a.name).localeCompare(String(b.name), 'de'));
+      $('mitgliederListe').innerHTML = liste.length ? liste.map(m => `<li><span class="info"><b>${esc(m.name || '–')}</b> · ${esc(m.email)}</span>
+          <button class="gefahr" data-entfernen="${esc(m.id)}">Entfernen</button></li>`).join('')
+        : '<li class="hinweis">Noch keine Mitglieder (Spielleiter haben immer Zugang).</li>';
+      $('mitgliederListe').querySelectorAll('[data-entfernen]').forEach(b => b.onclick = () => {
+        const m = liste.find(x => x.id === b.dataset.entfernen);
+        if (confirm(`Zugang für ${m.name || m.email} entfernen?`)) fs.deleteDoc(fs.doc(db, 'skatonline_mitglieder', m.id)).catch(e => toast(e.message, true));
+      });
+    }, e => { $('mitgliederListe').innerHTML = `<li class="hinweis">Fehler: ${esc(e.message)}</li>`; }));
+    if (rolle.admin) $('bilderStatus').textContent = `${Object.keys(altenburgerBilder).length} von 32 Bildern vorhanden.`;
+  }
+
+  $('bilderDateien').onchange = async e => {
+    const dateien = [...e.target.files];
+    const muster = /^(Kreuz|Pik|Herz|Karo)-(7|8|9|10|B|D|K|A)\.png$/i;
+    let ok = 0;
+    const fehler = [];
+    for (const f of dateien) {
+      const m = f.name.match(muster);
+      if (!m) { fehler.push(f.name + ' (Name)'); continue; }
+      if (f.size > 900 * 1024) { fehler.push(f.name + ' (zu groß)'); continue; }
+      const id = m[1][0].toUpperCase() + m[1].slice(1).toLowerCase() + '-' + m[2].toUpperCase();
+      $('bilderStatus').textContent = `Lade hoch: ${id} …`;
+      try {
+        const bytes = fs.Bytes.fromUint8Array(new Uint8Array(await f.arrayBuffer()));
+        await fs.setDoc(fs.doc(db, 'skatonline_kartenbilder', id), { daten: bytes, typ: 'image/png', groesse: f.size, hochgeladen: Date.now() });
+        ok++;
+      } catch (err) { fehler.push(f.name + ' (' + err.message + ')'); }
+    }
+    e.target.value = '';
+    await ladeKartenbilder();
+    $('bilderStatus').textContent = `${ok} hochgeladen, jetzt ${Object.keys(altenburgerBilder).length} von 32 vorhanden.` + (fehler.length ? ' Fehler: ' + fehler.join(', ') : '');
+  };
+
+  $('btnAnmelden').onclick = () => au.signInWithPopup(auth, new au.GoogleAuthProvider()).catch(e => toast(e.message, true));
+  $('btnAbmelden').onclick = () => { verlasseTischAnsicht(); au.signOut(auth); };
+  $('btnLobby').onclick = () => { verlasseTischAnsicht(); history.replaceState(null, '', location.pathname); zeigeLobby(); };
+  $('spielerName').onchange = () => localStorage.setItem('skatonline_name', $('spielerName').value.trim());
+
+  $('btnAnlegen').onclick = async () => {
+    const plaetze = parseInt(document.querySelector('input[name="neuPlaetze"]:checked').value, 10);
+    const r = await aktion({ typ: 'tischAnlegen', name: $('neuName').value.trim() || 'Skattisch', plaetze,
+      maxSpiele: parseInt($('neuSpiele').value, 10) || 0, spielerName: spielerName() });
+    if (r && r.tischId) oeffneTisch(r.tischId);
+  };
+  document.querySelectorAll('input[name="neuPlaetze"]').forEach(r => r.onchange = () => { $('neuSpiele').value = r.value === '3' ? 36 : 48; });
+  $('btnBeitreten').onclick = () => {
+    const code = $('beitretenCode').value.trim().toUpperCase();
+    if (code) oeffneTisch(code, true);
+  };
+
+  let lobbyAbos = [];
+  function zeigeLobby() {
+    zeige('lobby');
+    lobbyAbos.forEach(f => f()); lobbyAbos = [];
+    const liste = (elId, q, leer) => {
+      lobbyAbos.push(fs.onSnapshot(q, snap => {
+        const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+          .sort((a, b) => (b.aktualisiertMs || 0) - (a.aktualisiertMs || 0)).slice(0, 15);
+        $(elId).innerHTML = docs.length ? docs.map(t => {
+          const besetzt = (t.spieler || []).filter(Boolean).map(s => esc(s.name)).join(', ');
+          const st = t.status === 'warten' ? 'wartet' : t.status === 'laeuft' ? `Spiel ${t.spielNr}${t.maxSpiele ? '/' + t.maxSpiele : ''}` : 'beendet';
+          return `<li><span class="code">${esc(t.id)}</span><span class="info"><b>${esc(t.name)}</b> · ${t.plaetze}er-Tisch · ${st}<br>${besetzt}</span>
+                  <button data-oeffne="${esc(t.id)}">Öffnen</button></li>`;
+        }).join('') : `<li class="hinweis">${leer}</li>`;
+        $(elId).querySelectorAll('[data-oeffne]').forEach(b => b.onclick = () => oeffneTisch(b.dataset.oeffne));
+      }, e => { $(elId).innerHTML = `<li class="hinweis">Fehler: ${esc(e.message)}</li>`; }));
+    };
+    verwaltungAbonnieren();
+    liste('meineTische', fs.query(fs.collection(db, TISCHE), fs.where('uids', 'array-contains', uid)), 'Noch keine Tische.');
+    liste('offeneTische', fs.query(fs.collection(db, TISCHE), fs.where('status', '==', 'warten')), 'Kein offener Tisch.');
+  }
+
+  function verlasseTischAnsicht() {
+    abmeldenTisch(); abmeldenTisch = () => {};
+    tisch = null; meineKarten = []; tischId = null;
+  }
+
+  async function oeffneTisch(id, beitreten) {
+    lobbyAbos.forEach(f => f()); lobbyAbos = [];
+    verlasseTischAnsicht();
+    tischId = id.toUpperCase();
+    history.replaceState(null, '', '?tisch=' + tischId);
+    zeige('tischAnsicht');
+    $('aktionen').innerHTML = '<div class="frage">Lade Tisch …</div>';
+    const ref = fs.doc(db, TISCHE, tischId);
+    const abo1 = fs.onSnapshot(ref, snap => {
+      if (!snap.exists()) { toast('Tisch ' + tischId + ' gibt es nicht.', true); zeigeLobby(); return; }
+      tischGeaendert(snap.data());
+    }, e => toast('Tisch: ' + e.message, true));
+    const abo2 = fs.onSnapshot(fs.doc(db, TISCHE, tischId, 'haende', uid), snap => {
+      meineKarten = snap.exists() ? (snap.data().karten || []) : [];
+      render();
+    }, () => {});
+    abmeldenTisch = () => { abo1(); abo2(); };
+    if (beitreten) {
+      const snap = await fs.getDoc(ref).catch(() => null);
+      const t = snap && snap.exists() ? snap.data() : null;
+      if (t && t.status === 'warten' && !(t.uids || []).includes(uid) && t.spieler.some(s => !s)) {
+        aktion({ typ: 'beitreten', spielerName: spielerName() });
+      }
+    }
+  }
+
+  au.onAuthStateChanged(auth, async user => {
+    if (!user || user.isAnonymous) {
+      uid = null;
+      rolle = { zugang: false, verwalter: false, admin: false };
+      altenburgerBilder = {}; setzeKartenStil();
+      $('nutzerName').textContent = '';
+      $('btnAbmelden').classList.add('versteckt');
+      zeige('anmeldung');
+      return;
+    }
+    uid = user.uid;
+    $('nutzerName').textContent = user.displayName || user.email || '';
+    $('btnAbmelden').classList.remove('versteckt');
+    $('spielerName').value = localStorage.getItem('skatonline_name') || (user.displayName || '').split(' ')[0];
+    rolle = await pruefeZugang(user);
+    if (!rolle.zugang) { zeigeGesperrt(user); return; }
+    ladeKartenbilder();
+    const t = params.get('tisch');
+    if (t) oeffneTisch(t, true); else zeigeLobby();
+  });
+}
+
+$('kartenStil').onchange = e => setzeKartenStil(e.target.value);
+setzeKartenStil();
+if (DEMO) starteDemo(); else starteOnline();
+</script>
+</body>
+</html>

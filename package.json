@@ -1,0 +1,9 @@
+{
+  "name": "skat-online",
+  "private": true,
+  "scripts": {
+    "test": "node --test tests/logik.test.js tests/function.test.js",
+    "demo": "python -m http.server 8771 -d public",
+    "deploy": "firebase deploy --only functions:skatonline"
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "functions": [
+    {
+      "source": "functions",
+      "codebase": "skatonline",
+      "runtime": "nodejs22",
+      "ignore": ["node_modules", ".git", "*.log"],
+      "predeploy": ["node tools/kopiere-logik.js"]
+    }
+  ]
+}
