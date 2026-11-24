@@ -10,7 +10,7 @@
     --hell: #f6f8fa; --rand: #d0d7de; --rot: #c62828; --gruen: #1a7f37;
     --c: #111; --s: #111; --h: #d1242f; --d: #d1242f;
     /* Kartenbreite: richtet sich nach Fensterbreite und -höhe (Tisch ohne Scrollen) */
-    --kb-basis: clamp(36px, min(7vw, calc((100vh - 270px) / 8.2)), 78px);
+    --kb-basis: clamp(36px, min(7vw, calc((100vh - 330px) / 8.2)), 78px);
     --kb: var(--kb-basis);
   }
   * { box-sizing: border-box; }
@@ -50,7 +50,9 @@
   .filz { position: relative; background: radial-gradient(ellipse at center, #2b8a4b 0%, var(--filz) 55%, var(--filz-dunkel) 100%);
           border-radius: 22px; box-shadow: inset 0 0 40px rgba(0,0,0,.35); color: #fff;
           display: grid; grid-template-columns: 1fr 1.6fr 1fr; grid-template-rows: auto 1fr auto auto; padding: 8px 12px; gap: 4px; }
-  .sitz { background: rgba(0,0,0,.22); border-radius: 12px; padding: 8px 10px; min-width: 150px; align-self: center; justify-self: center; text-align: center; border: 2px solid transparent; }
+  /* feste Mindesthöhe: Abzeichen (passe, Reizwert …) und Geber ohne Karten verändern die Höhe sonst laufend */
+  .sitz { background: rgba(0,0,0,.22); border-radius: 12px; padding: 8px 10px; min-width: 150px; min-height: 128px; align-self: center; justify-self: center; text-align: center; border: 2px solid transparent;
+          display: flex; flex-direction: column; justify-content: center; }
   .sitz.amzug { border-color: var(--gold); box-shadow: 0 0 14px rgba(227,179,65,.7); }
   .sitz .nm { font-weight: 700; font-size: 16px; }
   .sitz .rolle { font-size: 12px; opacity: .9; margin-top: 2px; }
@@ -89,7 +91,8 @@
   .hand .karte.ausSkat { box-shadow: 0 0 0 3px #7fd3ff, 0 2px 5px rgba(0,0,0,.45); }
   .hand .karte.ausSkat.gewaehlt { box-shadow: 0 0 0 3px var(--gold), 0 4px 10px rgba(0,0,0,.4); }
   .mitte .meldung { position: absolute; inset: 0 0 auto 0; text-align: center; font-size: 14px; text-shadow: 0 1px 2px #000; }
-  .aktionen { grid-column: 1 / -1; grid-row: 3; text-align: center; min-height: 40px; display: flex; flex-direction: column; align-items: center; gap: 8px; justify-content: center; }
+  /* feste Mindesthöhe (Frage + Knopfzeile), damit die Hand beim Reizen nicht springt */
+  .aktionen { grid-column: 1 / -1; grid-row: 3; text-align: center; min-height: 92px; display: flex; flex-direction: column; align-items: center; gap: 8px; justify-content: center; }
   .aktionen .frage { font-size: 17px; font-weight: 600; text-shadow: 0 1px 2px #000; }
   .aktionen .knoepfe { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; align-items: center; }
   .aktionen .knoepfe button { min-width: 64px; }
