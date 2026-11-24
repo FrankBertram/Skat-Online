@@ -74,11 +74,11 @@
   .mitte .skat { --kb: var(--kb-basis); }
   .lupe { position: absolute; right: 4px; top: 4px; z-index: 5; padding: 4px 10px; font-size: 15px; background: rgba(255,255,255,.9); }
   .lupe.an { background: var(--gold); border-color: #8a6414; font-weight: 700; }
-  .karte.stichkarte { position: absolute; left: 50%; top: 50%; transition: transform .25s; }
-  .stichkarte.unten { transform: translate(-50%, -18%); }
-  .stichkarte.oben  { transform: translate(-50%, -82%); }
-  .stichkarte.links { transform: translate(-125%, -50%) rotate(-8deg); }
-  .stichkarte.rechts{ transform: translate(25%, -50%) rotate(8deg); }
+  /* Stich immer in derselben Form: zwei Karten oben (links/rechts gekippt), eine mittig darunter */
+  .karte.stichkarte { position: absolute; left: 50%; top: 50%; }
+  .stichkarte.s-unten  { transform: translate(-50%, -22%); z-index: 2; }
+  .stichkarte.s-links  { transform: translate(-108%, -76%) rotate(-10deg); }
+  .stichkarte.s-rechts { transform: translate(8%, -76%) rotate(10deg); }
   .stichkarte.alt { opacity: .75; }
   /* Skat in der Tischmitte: verdeckt, beim Aufnehmen (nur für den Alleinspieler) umgedreht */
   .skat { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); display: flex; gap: 8px; }
@@ -425,6 +425,22 @@ function rolleVon(p) {
   return p === tisch.geber ? 'Geber – setzt aus' : '';
 }
 // Plätze relativ zum Betrachter: unten = ich, dann im Uhrzeigersinn links, oben, rechts
+// Platz der Stichkarte: eigener Platz unten, die beiden anderen Spieler (im Uhrzeigersinn) oben links und oben rechts.
+// Wer aussetzt (Geber), sieht Vorhand links, Hinterhand rechts, Mittelhand unten.
+function stichPositionen() {
+  const t = tisch;
+  const ich = meinPlatz();
+  const akt = t.aktive && t.aktive.length === 3 ? t.aktive : [0, 1, 2].slice(0, t.plaetze);
+  const sp = {};
+  if (akt.includes(ich)) {
+    const andere = [1, 2, 3].map(d => (ich + d) % t.plaetze).filter(p => akt.includes(p) && p !== ich);
+    sp[ich] = 's-unten'; sp[andere[0]] = 's-links'; sp[andere[1]] = 's-rechts';
+  } else {
+    sp[akt[0]] = 's-links'; sp[akt[1]] = 's-unten'; sp[akt[2]] = 's-rechts';
+  }
+  return sp;
+}
+
 function positionen() {
   const ich = Math.max(0, meinPlatz());
   const n = tisch.plaetze;
@@ -546,7 +562,8 @@ function renderMitte(pos) {
   if (!lupeErlaubt) lupeAn = false;
   const lupe = lupeAn;
   if (lupe || (karten.length === 0 && t.letzterStich && Date.now() < zeigeStichBis)) { karten = t.letzterStich.karten; alt = true; }
-  karten.forEach(s => { h += karteHTML(s.karte, 'stichkarte ' + pos[s.platz] + (alt && !lupe ? ' alt' : '')); });
+  const sp = stichPositionen();
+  karten.forEach(s => { h += karteHTML(s.karte, 'stichkarte ' + (sp[s.platz] || 's-unten') + (alt && !lupe ? ' alt' : '')); });
   if (lupeErlaubt) h += `<button id="btnLupe" class="lupe${lupeAn ? ' an' : ''}" title="Letzten Stich ansehen">🔍 ${lupeAn ? 'Zurück' : 'Letzter Stich'}</button>`;
   let meldung = '';
   if (lupe) meldung = `🔍 Letzter Stich – an ${esc(nameVon(t.letzterStich.gewinner))}`;
