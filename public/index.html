@@ -110,6 +110,9 @@
   .aktionen.mitSkat { background: none; box-shadow: none; padding: 0; align-self: center; }
   .skatreihe { display: flex; align-items: center; justify-content: center; gap: 18px; }
   .skatreihe .skatkarten { display: flex; gap: 8px; --kb: var(--kb-spiel); }
+  /* feste Breite: Frage „Skat aufnehmen?“ und „Drücken“ sind verschieden lang – der Skat soll nicht zur Seite rutschen */
+  .aktionen.mitSkat .aktionsbox { width: min(600px, 52vw); }
+  .aktionen.mitSkat .frage { white-space: normal; }
   .aktionsbox { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 14px;
                 background: rgba(0,40,15,.55); box-shadow: 0 2px 10px rgba(0,0,0,.25); }
   .aktionen .frage { font-size: 17px; font-weight: 600; text-shadow: 0 1px 2px #000; }
@@ -134,7 +137,8 @@
   .hand { display: flex; justify-content: center; flex-wrap: nowrap; padding: 16px 6px 4px; min-height: calc(var(--kb) * 1.53 + 20px); }
   /* Eigene Hand so groß wie der Stich; Karten überlappen höchstens 25 %, 12 Karten (beim Drücken) etwas kleiner */
   .hand { --kb: var(--kb-spiel); }
-  .hand.zwoelf { --kb: max(44px, min(var(--kb-hoehe), calc((100vw - 480px) / 9.25))); }
+  /* 12 Karten (Drücken): gleiche Größe, nur so eng wie nötig zusammengeschoben */
+  .hand.zwoelf .karte { margin-left: min(calc(var(--kb) * -0.25), calc((100vw - 480px - 12 * var(--kb)) / 11)); }
   .hand .karte { margin-left: calc(var(--kb) * -0.25); }
   .hand .karte:first-child { margin-left: 0; }
   .hand .karte.spielbar { cursor: pointer; }
@@ -567,10 +571,7 @@ function renderMitte(pos) {
   // Skat: verdeckt beim Reizen und vor der Aufnahme, bei Handspielen klein in der Ecke
   if (t.phase === 'reizen') h += skatHTML(false);   // bei der Skataufnahme liegt er neben der Ansage-Box
   else if (t.phase === 'spielen' && t.spiel && t.spiel.hand) h += skatHTML(true);
-  else if (t.phase === 'druecken' && skatInfo && skatInfo.spielNr === t.spielNr && ich === t.alleinspieler && Date.now() < skatInfo.bis) {
-    const rs = `<div class="karte rs"><img src="${window.KartenBild.rueckenUrl()}" alt=""></div>`;
-    h += `<div class="skat">${skatInfo.karten.map(k => `<div class="dreh">${rs}${karteHTML(k, 'vs')}</div>`).join('')}<div class="titel">Dein Skat</div></div>`;
-  }
+
   let karten = t.stich || [];
   let alt = false;
   // Lupe: letzten Stich ansehen, solange man im laufenden Stich noch keine Karte gespielt hat
@@ -660,11 +661,27 @@ function renderAktionen(ich) {
   } else if (t.phase === 'beendet') {
     h = `<div class="frage">Die Liste ist beendet. Ergebnis siehe Liste (Knopf „📋 Liste“).</div>`;
   }
-  const mitSkat = t.phase === 'skataufnahme' && !!h;
+  // Skat links neben der Box: verdeckt bei der Frage „Skat aufnehmen?“, danach (nur Alleinspieler) an derselben Stelle umgedreht
+  const eigenerSkat = t.phase === 'druecken' && ich === t.alleinspieler && skatInfo && skatInfo.spielNr === t.spielNr;
+  const mitSkat = !!h && (t.phase === 'skataufnahme' || eigenerSkat);
   el.classList.toggle('mitSkat', mitSkat);
   if (mitSkat) {
-    const r = `<div class="karte ruecken-karte"><img src="${window.KartenBild.rueckenUrl()}" alt="Skat"></div>`;
-    h = `<div class="skatreihe"><div class="skatkarten" title="Skat">${r}${r}</div><div class="aktionsbox">${h}</div></div>`;
+    const rueckenSrc = window.KartenBild.rueckenUrl();
+    let skat;
+    if (!eigenerSkat) {
+      const r = `<div class="karte ruecken-karte"><img src="${rueckenSrc}" alt="Skat"></div>`;
+      skat = r + r;
+    } else if (Date.now() < skatInfo.bis) {
+      // Animation läuft: Verzögerung nach bereits vergangener Zeit, damit ein erneutes Zeichnen sie nicht neu startet
+      const vergangen = Date.now() - (skatInfo.bis - 3000);
+      const v = ms => `animation-delay:${ms - vergangen}ms`;
+      skat = skatInfo.karten.map((k, i) =>
+        `<div class="dreh"><div class="karte rs" style="${v(i ? 250 : 0)}"><img src="${rueckenSrc}" alt=""></div>` +
+        karteHTML(k, 'vs', `style="${v(i ? 600 : 350)}"`) + `</div>`).join('');
+    } else {
+      skat = skatInfo.karten.map(k => karteHTML(k)).join('');
+    }
+    h = `<div class="skatreihe"><div class="skatkarten" title="${eigenerSkat ? 'Dein Skat' : 'Skat'}">${skat}</div><div class="aktionsbox">${h}</div></div>`;
   }
   el.innerHTML = h;
 
