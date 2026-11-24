@@ -170,16 +170,25 @@
 <section id="anmeldung" class="karte-box versteckt">
   <h2>Willkommen</h2>
   <p>Hier spielen 3 oder 4 Spieler von verschiedenen PCs gemeinsam Skat (Wertung nach Seeger-Fabian).
-     Bitte mit dem Google-Konto anmelden.</p>
+     Bitte anmelden – mit dem Google-Konto oder ohne Google über einen Anmeldelink per E-Mail.</p>
   <button id="btnAnmelden" class="primaer">Mit Google anmelden</button>
+  <h3 style="font-size:16px;margin:18px 0 6px">Ohne Google-Konto: Anmeldelink per E-Mail</h3>
+  <div class="zeile">
+    <input id="linkEmail" type="email" placeholder="E-Mail-Adresse" autocomplete="email" style="flex:1;min-width:220px">
+    <button id="btnLinkSenden">✉️ Anmeldelink senden</button>
+  </div>
+  <p id="linkStatus" class="hinweis">Du bekommst eine E-Mail mit einem Link – ein Klick darauf meldet dich an, ohne Passwort.
+     Bitte den Link im selben Browser öffnen. Keine Mail? Auch im Spam-Ordner nachsehen.</p>
   <p class="hinweis">Zum Ausprobieren ohne Anmeldung: <a href="?demo">Übungsmodus (alle Plätze an einem PC)</a></p>
 </section>
 
 <!-- Kein Zugang -->
 <section id="gesperrt" class="karte-box versteckt">
   <h2>🔒 Noch nicht freigeschaltet</h2>
-  <p>Skat-Online ist nur für Mitglieder des 1. Sintherner Skatclubs. Dein Google-Konto
+  <p>Skat-Online ist nur für Mitglieder des 1. Sintherner Skatclubs. Dein Konto
      <b id="gesperrtKonto"></b> ist noch nicht freigeschaltet.</p>
+  <div class="zeile"><label for="antragName">Dein Name (Vor- und Nachname):</label>
+    <input id="antragName" maxlength="40" placeholder="z. B. Max Mustermann" style="min-width:220px"></div>
   <p id="antragStatus" class="hinweis"></p>
   <div class="zeile">
     <button id="btnAntrag" class="primaer">Freischaltung beantragen</button>
@@ -898,20 +907,24 @@ async function starteOnline() {
   async function zeigeGesperrt(user) {
     zeige('gesperrt');
     $('gesperrtKonto').textContent = user.email || user.displayName || '';
+    if (!$('antragName').value) $('antragName').value = user.displayName || localStorage.getItem('skatonline_antragname') || '';
+    const antragName = () => $('antragName').value.trim();
     const ref = fs.doc(db, 'skatonline_antraege', user.uid);
     const a = await fs.getDoc(ref).catch(() => null);
     $('antragStatus').textContent = a && a.exists()
       ? 'Antrag gestellt am ' + new Date(a.data().zeit).toLocaleString('de-DE') + ' – bitte warten, bis ein Spielleiter freischaltet.'
       : '';
     $('btnAntrag').onclick = async () => {
+      if (!antragName()) { toast('Bitte deinen Namen eintragen, damit der Spielleiter dich erkennt.', true); $('antragName').focus(); return; }
+      localStorage.setItem('skatonline_antragname', antragName());
       try {
-        await fs.setDoc(ref, { name: user.displayName || spielerName(), email: user.email || '', zeit: Date.now() });
+        await fs.setDoc(ref, { name: antragName().slice(0, 40), email: user.email || '', zeit: Date.now() });
         toast('Antrag gestellt');
         zeigeGesperrt(user);
       } catch (e) { toast('Antrag fehlgeschlagen: ' + e.message, true); }
     };
     $('btnAntragMail').onclick = () => {
-      const text = `Hallo,\n\nbitte schalte mich für Skat-Online frei.\n\nName: ${user.displayName || ''}\nE-Mail: ${user.email || ''}\nUID: ${user.uid}\n`;
+      const text = `Hallo,\n\nbitte schalte mich für Skat-Online frei.\n\nName: ${antragName() || user.displayName || ''}\nE-Mail: ${user.email || ''}\nUID: ${user.uid}\n`;
       location.href = `mailto:${ADMIN_EMAIL}?subject=${encodeURIComponent('Skat-Online Freischaltung')}&body=${encodeURIComponent(text)}`;
     };
     $('btnGesperrtAbmelden').onclick = () => au.signOut(auth);
@@ -976,6 +989,49 @@ async function starteOnline() {
   };
 
   $('btnAnmelden').onclick = () => au.signInWithPopup(auth, new au.GoogleAuthProvider()).catch(e => toast(e.message, true));
+
+  // Anmeldelink per E-Mail (Firebase „E-Mail-Link“, ohne Passwort)
+  auth.languageCode = 'de';
+  const LINK_EMAIL_KEY = 'skatonline_link_email';
+  const AUTH_PARAMS = ['apiKey', 'oobCode', 'mode', 'lang', 'continueUrl', 'tenantId'];
+  function linkFehlerText(e) {
+    const c = e && e.code || '';
+    if (c === 'auth/operation-not-allowed') return 'Die Anmeldung per E-Mail-Link ist in Firebase noch nicht aktiviert (Authentication → Sign-in method → E-Mail/Passwort → E-Mail-Link).';
+    if (c === 'auth/invalid-email') return 'Die E-Mail-Adresse ist ungültig.';
+    if (c === 'auth/invalid-action-code' || c === 'auth/expired-action-code') return 'Der Anmeldelink ist abgelaufen oder wurde schon benutzt – bitte einen neuen anfordern.';
+    if (c === 'auth/quota-exceeded') return 'Zu viele Anmeldelinks heute – bitte später erneut versuchen.';
+    if (c === 'auth/unauthorized-continue-uri' || c === 'auth/unauthorized-domain') return 'Diese Adresse ist in Firebase nicht als Anmelde-Domain freigegeben.';
+    return (e && e.message) || 'Unbekannter Fehler';
+  }
+  $('btnLinkSenden').onclick = async () => {
+    const email = $('linkEmail').value.trim();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { toast('Bitte eine gültige E-Mail-Adresse eingeben.', true); $('linkEmail').focus(); return; }
+    // Rücksprung auf dieselbe Seite (Tisch-Link bleibt erhalten)
+    const ziel = new URL(location.href);
+    AUTH_PARAMS.forEach(x => ziel.searchParams.delete(x));
+    ziel.hash = '';
+    $('btnLinkSenden').disabled = true;
+    try {
+      await au.sendSignInLinkToEmail(auth, email, { url: ziel.href, handleCodeInApp: true });
+      localStorage.setItem(LINK_EMAIL_KEY, email);
+      $('linkStatus').innerHTML = `✅ Anmeldelink an <b>${esc(email)}</b> gesendet. Bitte die E-Mail öffnen und auf den Link klicken
+        (Absender noreply@…firebaseapp.com, ggf. im Spam-Ordner). Der Link gilt einige Stunden und nur einmal.`;
+    } catch (e) { toast(linkFehlerText(e), true); }
+    finally { $('btnLinkSenden').disabled = false; }
+  };
+  $('linkEmail').onkeydown = e => { if (e.key === 'Enter') $('btnLinkSenden').click(); };
+  if (au.isSignInWithEmailLink(auth, location.href)) {
+    let email = localStorage.getItem(LINK_EMAIL_KEY);
+    if (!email) email = (prompt('Zur Sicherheit: Mit welcher E-Mail-Adresse hast du den Anmeldelink angefordert?') || '').trim();
+    const sauber = new URL(location.href);
+    AUTH_PARAMS.forEach(x => sauber.searchParams.delete(x));
+    if (email) {
+      au.signInWithEmailLink(auth, email, location.href)
+        .then(() => { localStorage.removeItem(LINK_EMAIL_KEY); toast('Angemeldet als ' + email); })
+        .catch(e => toast('Anmeldung fehlgeschlagen: ' + linkFehlerText(e), true))
+        .finally(() => history.replaceState(null, '', sauber.pathname + sauber.search + sauber.hash));
+    } else history.replaceState(null, '', sauber.pathname + sauber.search + sauber.hash);
+  }
   $('btnAbmelden').onclick = () => { verlasseTischAnsicht(); au.signOut(auth); };
   $('btnLobby').onclick = () => { verlasseTischAnsicht(); history.replaceState(null, '', location.pathname); zeigeLobby(); };
   $('spielerName').onchange = () => localStorage.setItem('skatonline_name', $('spielerName').value.trim());
@@ -1058,7 +1114,7 @@ async function starteOnline() {
     uid = user.uid;
     $('nutzerName').textContent = user.displayName || user.email || '';
     $('btnAbmelden').classList.remove('versteckt');
-    $('spielerName').value = localStorage.getItem('skatonline_name') || (user.displayName || '').split(' ')[0];
+    $('spielerName').value = localStorage.getItem('skatonline_name') || (user.displayName || localStorage.getItem('skatonline_antragname') || '').split(' ')[0];
     rolle = await pruefeZugang(user);
     if (!rolle.zugang) { zeigeGesperrt(user); return; }
     ladeKartenbilder();

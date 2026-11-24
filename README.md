@@ -54,6 +54,11 @@ Karten oder den Skat sehen oder ungültige Züge machen.
 
 Die Domain `frankbertram.github.io` ist für die Google-Anmeldung schon freigegeben.
 
+**Anmeldung ohne Google:** Auf der Startseite kann man sich einen Anmeldelink per E-Mail schicken lassen
+(Firebase „E-Mail-Link“, ohne Passwort). Dafür muss in der Firebase Console unter
+Authentication → Sign-in method der Anbieter **E-Mail/Passwort** mit der Option **E-Mail-Link (Anmeldung ohne Passwort)**
+aktiviert sein. Die Freischaltung läuft wie bei Google-Konten über einen Antrag (mit Namensfeld).
+
 ## Privater Zugang
 
 Spielen können nur der Admin, die Sintherner Spielleiter (`spielleiter/<uid>` ohne `verein`
