@@ -10,7 +10,7 @@
     --hell: #f6f8fa; --rand: #d0d7de; --rot: #c62828; --gruen: #1a7f37;
     --c: #111; --s: #111; --h: #d1242f; --d: #d1242f;
     /* Kartenbreite: richtet sich nach Fensterbreite und -höhe (Tisch ohne Scrollen) */
-    --kb-basis: clamp(36px, min(7vw, calc((100vh - 330px) / 8.2)), 78px);
+    --kb-basis: clamp(36px, min(7vw, calc((100vh - 330px) / 8.9)), 78px);
     --kb: var(--kb-basis);
   }
   * { box-sizing: border-box; }
@@ -41,8 +41,7 @@
   .hinweis { font-size: 13px; color: #555; }
 
   /* ── Tisch ─────────────────────────────────────── */
-  #tischAnsicht { display: grid; grid-template-columns: 1fr 340px; gap: 8px; padding: 8px 12px; max-width: 1500px; margin: 0 auto; }
-  @media (max-width: 1050px) { #tischAnsicht { grid-template-columns: 1fr; } }
+  #tischAnsicht { display: grid; grid-template-columns: 1fr; gap: 8px; padding: 8px 12px; margin: 0 auto; }
   .infoleiste { grid-column: 1 / -1; display: flex; gap: 14px; align-items: center; flex-wrap: wrap; background: #fff; border-radius: 10px; padding: 8px 14px; font-size: 15px; }
   .infoleiste .gross { font-weight: 700; }
   .infoleiste .ansage { background: #fff6d6; border: 1px solid #e8cf7a; border-radius: 6px; padding: 2px 8px; }
@@ -67,7 +66,10 @@
   #sitzOben { grid-column: 2; grid-row: 1; }
   #sitzLinks { grid-column: 1; grid-row: 2; }
   #sitzRechts { grid-column: 3; grid-row: 2; }
-  .mitte { grid-column: 2; grid-row: 2; position: relative; min-height: calc(var(--kb) * 3.1); margin-bottom: 4px; }
+  .mitte { grid-column: 2; grid-row: 2; position: relative; --kb: calc(var(--kb-basis) * 1.4); min-height: calc(var(--kb) * 2.75); margin-bottom: 4px; }
+  .mitte .skat { --kb: var(--kb-basis); }
+  .lupe { position: absolute; right: 4px; top: 4px; z-index: 5; padding: 4px 10px; font-size: 15px; background: rgba(255,255,255,.9); }
+  .lupe.an { background: var(--gold); border-color: #8a6414; font-weight: 700; }
   .karte.stichkarte { position: absolute; left: 50%; top: 50%; transition: transform .25s; }
   .stichkarte.unten { transform: translate(-50%, -12%); }
   .stichkarte.oben  { transform: translate(-50%, -88%); }
@@ -76,7 +78,7 @@
   .stichkarte.alt { opacity: .75; }
   /* Skat in der Tischmitte: verdeckt, beim Aufnehmen (nur für den Alleinspieler) umgedreht */
   .skat { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); display: flex; gap: 8px; }
-  .skat.klein { left: 6px; top: 6px; transform: none; gap: 3px; --kb: 30px; opacity: .85; }
+  .skat.klein { left: 6px; top: auto; bottom: 6px; transform: none; gap: 3px; --kb: 30px; opacity: .85; }
   .skat .titel { position: absolute; left: 0; right: 0; top: 100%; margin-top: 4px; font-size: 12px; text-align: center; text-shadow: 0 1px 2px #000; white-space: nowrap; }
   .skat.klein .titel { display: none; }
   .ruecken-karte img { width: 100%; height: 100%; display: block; }
@@ -90,7 +92,8 @@
   @keyframes dreh-hin { to { transform: scaleX(1); } }
   .hand .karte.ausSkat { box-shadow: 0 0 0 3px #7fd3ff, 0 2px 5px rgba(0,0,0,.45); }
   .hand .karte.ausSkat.gewaehlt { box-shadow: 0 0 0 3px var(--gold), 0 4px 10px rgba(0,0,0,.4); }
-  .mitte .meldung { position: absolute; inset: 0 0 auto 0; text-align: center; font-size: 14px; text-shadow: 0 1px 2px #000; }
+  .mitte .meldung { position: absolute; left: 0; top: 0; z-index: 4; font-size: 14px; text-shadow: 0 1px 2px #000; max-width: 34%; text-align: left; }
+  .mitte .meldung:empty { display: none; }
   /* feste Mindesthöhe (Frage + Knopfzeile), damit die Hand beim Reizen nicht springt */
   .aktionen { grid-column: 1 / -1; grid-row: 3; text-align: center; min-height: 92px; display: flex; flex-direction: column; align-items: center; gap: 8px; justify-content: center; }
   .aktionen .frage { font-size: 17px; font-weight: 600; text-shadow: 0 1px 2px #000; }
@@ -109,8 +112,7 @@
   .meinbereich.amzug .hand { background: rgba(227,179,65,.18); border-radius: 14px; }
   .hand { display: flex; justify-content: center; flex-wrap: nowrap; padding: 16px 6px 4px; min-height: calc(var(--kb) * 1.53 + 20px); }
   /* Eigene Hand ca. 80 % größer, begrenzt durch die Breite (12 Karten überlappend + Sortierleiste) */
-  .hand { --kb: min(calc(var(--kb-basis) * 1.8), calc((100vw - 540px) / 7.3)); }
-  @media (max-width: 1050px) { .hand { --kb: max(44px, min(calc(var(--kb-basis) * 1.8), calc((100vw - 170px) / 7.3))); } }
+  .hand { --kb: max(44px, min(calc(var(--kb-basis) * 1.8), calc((100vw - 200px) / 7.3))); }
   .hand .karte { margin-left: calc(var(--kb) * -0.45); }
   .hand .karte:first-child { margin-left: 0; }
   .hand .karte.spielbar { cursor: pointer; }
@@ -130,7 +132,11 @@
   .mini.f-c { color: var(--c); } .mini.f-s { color: var(--s); } .mini.f-h { color: var(--h); } .mini.f-d { color: var(--d); }
 
   /* ── Seitenleiste ───────────────────────────────── */
-  .seite { display: flex; flex-direction: column; gap: 12px; }
+  /* Liste/Ergebnis: Tafel über dem Tisch rechts – nach dem Spiel automatisch, sonst über den Knopf „Liste“ */
+  .seite { display: flex; flex-direction: column; gap: 12px; position: fixed; right: 12px; top: 64px; width: min(380px, 94vw);
+           max-height: calc(100vh - 80px); overflow-y: auto; z-index: 20; padding: 10px; border-radius: 14px;
+           background: rgba(233,238,242,.97); box-shadow: 0 6px 24px rgba(0,0,0,.35); }
+  .seite .schliessen { align-self: flex-end; padding: 2px 10px; font-size: 13px; margin-bottom: -6px; }
   .seite .box { background: #fff; border-radius: 10px; padding: 10px 12px; }
   .seite h3 { margin: 0 0 8px; font-size: 16px; }
   .ergebnis.gew { border-left: 6px solid var(--gruen); }
@@ -142,7 +148,7 @@
   table.liste tfoot td { font-weight: 700; border-top: 2px solid #999; }
   table.liste tr.verl td.wert { color: var(--rot); }
   table.liste .nb { color: #999; }
-  .listen-scroll { max-height: 420px; overflow-y: auto; }
+  .listen-scroll { max-height: 50vh; overflow-y: auto; }
   .log { font-size: 13px; color: #444; }
 
   #toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: #333; color: #fff;
@@ -262,7 +268,8 @@
     <div class="aktionen" id="aktionen"></div>
     <div class="meinbereich" id="meinbereich"></div>
   </div>
-  <div class="seite">
+  <div class="seite versteckt" id="seite">
+    <button class="schliessen" id="btnSeiteZu" title="Liste schließen">✕ Schließen</button>
     <div class="box ergebnis versteckt" id="ergebnisBox"></div>
     <div class="box">
       <h3>Letzter Stich</h3>
@@ -323,6 +330,8 @@ let gewaehlteArt = null;   // Spielart in der Ansage
 let sortierArt = null;     // vom Spieler gewählte Sortierung (null = automatisch)
 let optionen = { schneider: false, schwarz: false, ouvert: false };
 let letzterStichNr = 0, zeigeStichBis = 0;
+let lupeAn = false;        // letzten Stich in der Mitte ansehen (bis zur eigenen Karte)
+let listeOffen = null;     // Liste-Tafel: null = automatisch (nach dem Spiel), true/false = vom Spieler gewählt
 let abmeldenTisch = () => {};
 let backend = null;
 
@@ -433,6 +442,7 @@ function render() {
   if (t.reizwert) info += `<span>Reizwert: <b>${t.reizwert}</b></span>`;
   if (t.spiel) info += `<span class="ansage">${esc(nameVon(t.alleinspieler))} spielt <b>${esc(S.spielText(t.spiel))}</b></span>`;
   if (t.phase === 'spielen') info += `<span>Stich ${Math.min(t.stichNr + 1, 10)} / 10</span>`;
+  info += `<button id="btnListe" style="padding:2px 10px;font-size:13px">📋 Liste</button>`;
   if (t.erstelltVon === uid && t.status !== 'beendet' && !DEMO) info += `<button id="btnTischBeenden" class="gefahr" style="margin-left:auto;padding:3px 10px;font-size:13px">Tisch beenden</button>`;
   $('infoleiste').innerHTML = info;
   const bl = $('btnLink');
@@ -440,6 +450,7 @@ function render() {
     const url = location.origin + location.pathname + '?tisch=' + (t.code || tischId);
     navigator.clipboard.writeText(url).then(() => toast('Link kopiert – an die Mitspieler schicken'));
   };
+  $('btnListe').onclick = () => { listeOffen = !seiteSichtbar(); render(); };
   const bb = $('btnTischBeenden');
   if (bb) bb.onclick = () => { if (confirm('Tisch wirklich beenden? Danach kann nicht weitergespielt werden.')) aktion({ typ: 'beenden' }); };
 
@@ -514,10 +525,16 @@ function renderMitte(pos) {
   }
   let karten = t.stich || [];
   let alt = false;
-  if (karten.length === 0 && t.letzterStich && Date.now() < zeigeStichBis) { karten = t.letzterStich.karten; alt = true; }
-  karten.forEach(s => { h += karteHTML(s.karte, 'stichkarte ' + pos[s.platz] + (alt ? ' alt' : '')); });
+  // Lupe: letzten Stich ansehen, solange man im laufenden Stich noch keine Karte gespielt hat
+  const lupeErlaubt = t.phase === 'spielen' && !!t.letzterStich && !(t.stich || []).some(x => x.platz === ich);
+  if (!lupeErlaubt) lupeAn = false;
+  const lupe = lupeAn;
+  if (lupe || (karten.length === 0 && t.letzterStich && Date.now() < zeigeStichBis)) { karten = t.letzterStich.karten; alt = true; }
+  karten.forEach(s => { h += karteHTML(s.karte, 'stichkarte ' + pos[s.platz] + (alt && !lupe ? ' alt' : '')); });
+  if (lupeErlaubt) h += `<button id="btnLupe" class="lupe${lupeAn ? ' an' : ''}" title="Letzten Stich ansehen">🔍 ${lupeAn ? 'Zurück' : 'Letzter Stich'}</button>`;
   let meldung = '';
-  if (alt) meldung = `Stich an ${esc(nameVon(t.letzterStich.gewinner))}`;
+  if (lupe) meldung = `🔍 Letzter Stich – an ${esc(nameVon(t.letzterStich.gewinner))}`;
+  else if (alt) meldung = `Stich an ${esc(nameVon(t.letzterStich.gewinner))}`;
   else if (t.status === 'warten') meldung = `Warten auf Spieler (${t.spieler.filter(Boolean).length} / ${t.plaetze})`;
   else if (t.phase === 'spielen' && t.amZug != null) meldung = `${esc(nameVon(t.amZug))} ist am Zug`;
   if (!meldung && t.phase === 'druecken' && ich !== t.alleinspieler) meldung = `${esc(nameVon(t.alleinspieler))} hat den Skat aufgenommen`;
@@ -604,7 +621,7 @@ function renderAktionen(ich) {
     h = `<div class="frage">Spiel ${t.spielNr} beendet.</div>`;
     if (ich >= 0) h += `<div class="knoepfe">${knopf('Nächstes Spiel geben', { typ: 'weiter' }, 'primaer')}</div>`;
   } else if (t.phase === 'beendet') {
-    h = `<div class="frage">Die Liste ist beendet. Ergebnis siehe Liste rechts.</div>`;
+    h = `<div class="frage">Die Liste ist beendet. Ergebnis siehe Liste (Knopf „📋 Liste“).</div>`;
   }
   el.innerHTML = h;
 
@@ -713,8 +730,14 @@ function renderMeinBereich(ich) {
   });
 }
 
+function seiteSichtbar() {
+  if (listeOffen !== null) return listeOffen;
+  return tisch.phase === 'spielende' || tisch.phase === 'beendet';
+}
+
 function renderSeite() {
   const t = tisch;
+  $('seite').classList.toggle('versteckt', !seiteSichtbar());
   // Ergebnis des letzten Spiels
   const eb = $('ergebnisBox');
   const e = t.ergebnis;
@@ -778,6 +801,9 @@ function spielerName() {
   return ($('spielerName').value || '').trim() || localStorage.getItem('skatonline_name') || 'Spieler';
 }
 
+$('mitte').addEventListener('click', e => { if (e.target.closest('#btnLupe')) { lupeAn = !lupeAn; render(); } });
+$('btnSeiteZu').onclick = () => { listeOffen = false; render(); };
+
 // Neuer Stich → kurz in der Mitte stehen lassen; neues Spiel → Ansage zurücksetzen
 let letzteSpielNr = null;
 function tischGeaendert(neu) {
@@ -793,7 +819,9 @@ function tischGeaendert(neu) {
     gewaehlteArt = null; auswahlDruecken = [];
     optionen = { schneider: false, schwarz: false, ouvert: false };
     sortierArt = null;
+    listeOffen = null; lupeAn = false;
   }
+  if (alt && alt.phase !== neu.phase && (neu.phase === 'spielende' || neu.phase === 'beendet')) listeOffen = null;
   if (neu.spiel && (!alt || !alt.spiel || alt.spielNr !== neu.spielNr)) sortierArt = null;
   render();
   // Wird man am Zug, die eigene Hand ins Bild holen (nur falls sie nicht ganz sichtbar ist)
