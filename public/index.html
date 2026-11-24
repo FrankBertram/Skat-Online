@@ -46,7 +46,7 @@
 
   /* ── Tisch ─────────────────────────────────────── */
   #tischAnsicht { display: grid; grid-template-columns: 1fr; gap: 8px; padding: 8px 12px; margin: 0 auto; }
-  .infoleiste { grid-column: 1 / -1; display: flex; gap: 14px; align-items: center; flex-wrap: wrap; background: #fff; border-radius: 10px; padding: 8px 14px; font-size: 15px; }
+  .infoleiste { grid-column: 1 / -1; display: flex; gap: 14px; align-items: center; flex-wrap: nowrap; white-space: nowrap; overflow: hidden; height: 44px; background: #fff; border-radius: 10px; padding: 8px 14px; font-size: 15px; }
   .infoleiste .gross { font-weight: 700; }
   .infoleiste .ansage { background: #fff6d6; border: 1px solid #e8cf7a; border-radius: 6px; padding: 2px 8px; }
 
@@ -143,6 +143,15 @@
   .hand .karte.gewaehlt { transform: translateY(-20px); box-shadow: 0 0 0 3px var(--gold), 0 4px 10px rgba(0,0,0,.4); }
   .hand.waehlbar .karte { cursor: pointer; }
   .zuschauer { padding: 18px; font-size: 15px; opacity: .95; }
+
+  /* ── Am Tisch: alles auf feste Fensterhöhe, Reihen mit festen Höhen – der grüne Tisch ändert seine Größe nie ── */
+  body.amTisch { height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+  body.amTisch #tischAnsicht { flex: 1 1 auto; min-height: 0; width: 100%; grid-template-rows: auto minmax(0, 1fr); }
+  body.amTisch .filz { min-height: 0; height: 100%; overflow: hidden;
+                       grid-template-rows: 126px minmax(0, 1fr) calc(var(--kb-spiel) * 1.527 + 28px); }
+  body.amTisch .sitz { height: 118px; overflow: visible; }
+  body.amTisch .mitte { min-height: 0; }
+  body.amTisch .meinbereich { min-height: 0; overflow: visible; }
 
   /* ── Karten (SVG oder ASS-Altenburger-Bilder, Seitenverhältnis 262 × 400) ── */
   .karte { width: var(--kb); height: calc(var(--kb) * 1.527); border-radius: calc(var(--kb) * .07); overflow: hidden;
@@ -363,6 +372,7 @@ const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&a
 function zeige(id) {
   ['anmeldung', 'gesperrt', 'lobby', 'tischAnsicht'].forEach(x => $(x).classList.toggle('versteckt', x !== id));
   $('btnLobby').classList.toggle('versteckt', id !== 'tischAnsicht' || DEMO);
+  document.body.classList.toggle('amTisch', id === 'tischAnsicht');
 }
 
 let toastTimer = null;
