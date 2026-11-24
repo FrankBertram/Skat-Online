@@ -110,6 +110,9 @@
   .aktionen.mitSkat { background: none; box-shadow: none; padding: 0; align-self: center; }
   .skatreihe { display: flex; align-items: center; justify-content: center; gap: 18px; }
   .skatreihe .skatkarten { display: flex; gap: 8px; --kb: var(--kb-spiel); }
+  .skatreihe .skatkarten.weg { animation: ausblenden .6s forwards; }
+  .skatreihe .skatkarten.unsichtbar { visibility: hidden; }
+  @keyframes ausblenden { to { opacity: 0; } }
   /* feste Breite: Frage „Skat aufnehmen?“ und „Drücken“ sind verschieden lang – der Skat soll nicht zur Seite rutschen */
   .aktionen.mitSkat .aktionsbox { width: min(600px, 52vw); }
   .aktionen.mitSkat .frage { white-space: normal; }
@@ -354,6 +357,7 @@ function setzeMeineKarten(neu) {
       meineKarten.length === 10 && neu.length === 12 && tisch.alleinspieler === meinPlatz()) {
     skatInfo = { spielNr: tisch.spielNr, karten: neu.filter(k => !meineKarten.includes(k)), bis: Date.now() + 3000 };
     setTimeout(render, 3050);
+    setTimeout(render, 3650);
   }
   meineKarten = neu;
   meineKartenVon = uid;
@@ -666,7 +670,10 @@ function renderAktionen(ich) {
     } else {
       skat = skatInfo.karten.map(k => karteHTML(k)).join('');
     }
-    h = `<div class="skatreihe"><div class="skatkarten" title="${eigenerSkat ? 'Dein Skat' : 'Skat'}">${skat}</div><div class="aktionsbox">${h}</div></div>`;
+    // ca. 2 s nach dem Umdrehen ausblenden – der Platz bleibt frei, damit die Box nicht verrutscht
+    const nachher = eigenerSkat ? Date.now() - skatInfo.bis : -1;
+    const weg = nachher >= 600 ? ' unsichtbar' : nachher >= 0 ? ' weg' : '';
+    h = `<div class="skatreihe"><div class="skatkarten${weg}" title="${eigenerSkat ? 'Dein Skat' : 'Skat'}">${skat}</div><div class="aktionsbox">${h}</div></div>`;
   }
   el.innerHTML = h;
 
