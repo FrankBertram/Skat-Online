@@ -106,6 +106,12 @@
               align-items: center; gap: 8px; justify-content: center; pointer-events: none; padding: 8px 14px; border-radius: 14px; margin-bottom: 6px; }
   .aktionen:not(:empty) { background: rgba(0,40,15,.55); box-shadow: 0 2px 10px rgba(0,0,0,.25); }
   .aktionen > * { pointer-events: auto; }
+  /* Skataufnahme: verdeckter Skat (so groß wie die Handkarten) links neben der Ansage-Box, beides zusammen zentriert */
+  .aktionen.mitSkat { background: none; box-shadow: none; padding: 0; align-self: center; }
+  .skatreihe { display: flex; align-items: center; justify-content: center; gap: 18px; }
+  .skatreihe .skatkarten { display: flex; gap: 8px; --kb: var(--kb-spiel); }
+  .aktionsbox { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 14px;
+                background: rgba(0,40,15,.55); box-shadow: 0 2px 10px rgba(0,0,0,.25); }
   .aktionen .frage { font-size: 17px; font-weight: 600; text-shadow: 0 1px 2px #000; }
   .aktionen .knoepfe { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; align-items: center; }
   .aktionen .knoepfe button { min-width: 64px; }
@@ -549,7 +555,7 @@ function renderMitte(pos) {
   let h = '';
   const ich = meinPlatz();
   // Skat: verdeckt beim Reizen und vor der Aufnahme, bei Handspielen klein in der Ecke
-  if (t.phase === 'reizen' || t.phase === 'skataufnahme') h += skatHTML(false);
+  if (t.phase === 'reizen') h += skatHTML(false);   // bei der Skataufnahme liegt er neben der Ansage-Box
   else if (t.phase === 'spielen' && t.spiel && t.spiel.hand) h += skatHTML(true);
   else if (t.phase === 'druecken' && skatInfo && skatInfo.spielNr === t.spielNr && ich === t.alleinspieler && Date.now() < skatInfo.bis) {
     const rs = `<div class="karte rs"><img src="${window.KartenBild.rueckenUrl()}" alt=""></div>`;
@@ -643,6 +649,12 @@ function renderAktionen(ich) {
     if (ich >= 0) h += `<div class="knoepfe">${knopf('Nächstes Spiel geben', { typ: 'weiter' }, 'primaer')}</div>`;
   } else if (t.phase === 'beendet') {
     h = `<div class="frage">Die Liste ist beendet. Ergebnis siehe Liste (Knopf „📋 Liste“).</div>`;
+  }
+  const mitSkat = t.phase === 'skataufnahme' && !!h;
+  el.classList.toggle('mitSkat', mitSkat);
+  if (mitSkat) {
+    const r = `<div class="karte ruecken-karte"><img src="${window.KartenBild.rueckenUrl()}" alt="Skat"></div>`;
+    h = `<div class="skatreihe"><div class="skatkarten" title="Skat">${r}${r}</div><div class="aktionsbox">${h}</div></div>`;
   }
   el.innerHTML = h;
 
