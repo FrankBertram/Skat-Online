@@ -9,7 +9,7 @@
     --filz: #1f6b3a; --filz-dunkel: #15502b; --gold: #e3b341; --text: #1b1f24;
     --hell: #f6f8fa; --rand: #d0d7de; --rot: #c62828; --gruen: #1a7f37;
     --c: #111; --s: #111; --h: #d1242f; --d: #d1242f;
-    --kb: clamp(46px, 7.2vw, 78px);
+    --kb: clamp(40px, min(7.2vw, calc((100vh - 270px) / 7.4)), 80px);
   }
   * { box-sizing: border-box; }
   body { margin: 0; font-family: system-ui, "Segoe UI", Arial, sans-serif; color: var(--text); background: #e9eef2; }
@@ -39,15 +39,15 @@
   .hinweis { font-size: 13px; color: #555; }
 
   /* ── Tisch ─────────────────────────────────────── */
-  #tischAnsicht { display: grid; grid-template-columns: 1fr 340px; gap: 12px; padding: 12px; max-width: 1500px; margin: 0 auto; }
+  #tischAnsicht { display: grid; grid-template-columns: 1fr 340px; gap: 8px; padding: 8px 12px; max-width: 1500px; margin: 0 auto; }
   @media (max-width: 1050px) { #tischAnsicht { grid-template-columns: 1fr; } }
   .infoleiste { grid-column: 1 / -1; display: flex; gap: 14px; align-items: center; flex-wrap: wrap; background: #fff; border-radius: 10px; padding: 8px 14px; font-size: 15px; }
   .infoleiste .gross { font-weight: 700; }
   .infoleiste .ansage { background: #fff6d6; border: 1px solid #e8cf7a; border-radius: 6px; padding: 2px 8px; }
 
   .filz { position: relative; background: radial-gradient(ellipse at center, #2b8a4b 0%, var(--filz) 55%, var(--filz-dunkel) 100%);
-          border-radius: 22px; min-height: 560px; box-shadow: inset 0 0 40px rgba(0,0,0,.35); color: #fff;
-          display: grid; grid-template-columns: 1fr 1.6fr 1fr; grid-template-rows: auto 1fr auto auto; padding: 12px; gap: 6px; }
+          border-radius: 22px; box-shadow: inset 0 0 40px rgba(0,0,0,.35); color: #fff;
+          display: grid; grid-template-columns: 1fr 1.6fr 1fr; grid-template-rows: auto 1fr auto auto; padding: 8px 12px; gap: 4px; }
   .sitz { background: rgba(0,0,0,.22); border-radius: 12px; padding: 8px 10px; min-width: 150px; align-self: center; justify-self: center; text-align: center; border: 2px solid transparent; }
   .sitz.amzug { border-color: var(--gold); box-shadow: 0 0 14px rgba(227,179,65,.7); }
   .sitz .nm { font-weight: 700; font-size: 16px; }
@@ -63,7 +63,7 @@
   #sitzOben { grid-column: 2; grid-row: 1; }
   #sitzLinks { grid-column: 1; grid-row: 2; }
   #sitzRechts { grid-column: 3; grid-row: 2; }
-  .mitte { grid-column: 2; grid-row: 2; position: relative; min-height: calc(var(--kb) * 3.6); margin-bottom: 8px; }
+  .mitte { grid-column: 2; grid-row: 2; position: relative; min-height: calc(var(--kb) * 3.1); margin-bottom: 4px; }
   .karte.stichkarte { position: absolute; left: 50%; top: 50%; transition: transform .25s; }
   .stichkarte.unten { transform: translate(-50%, -12%); }
   .stichkarte.oben  { transform: translate(-50%, -88%); }
@@ -71,7 +71,7 @@
   .stichkarte.rechts{ transform: translate(25%, -50%) rotate(8deg); }
   .stichkarte.alt { opacity: .75; }
   .mitte .meldung { position: absolute; inset: 0 0 auto 0; text-align: center; font-size: 14px; text-shadow: 0 1px 2px #000; }
-  .aktionen { grid-column: 1 / -1; grid-row: 3; text-align: center; min-height: 56px; display: flex; flex-direction: column; align-items: center; gap: 8px; justify-content: center; }
+  .aktionen { grid-column: 1 / -1; grid-row: 3; text-align: center; min-height: 40px; display: flex; flex-direction: column; align-items: center; gap: 8px; justify-content: center; }
   .aktionen .frage { font-size: 17px; font-weight: 600; text-shadow: 0 1px 2px #000; }
   .aktionen .knoepfe { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; align-items: center; }
   .aktionen .knoepfe button { min-width: 64px; }
@@ -81,7 +81,7 @@
   .meinbereich { grid-column: 1 / -1; grid-row: 4; text-align: center; }
   .meinbereich .nm { font-weight: 700; }
   .meinbereich.amzug .hand { background: rgba(227,179,65,.18); border-radius: 14px; }
-  .hand { display: flex; justify-content: center; flex-wrap: nowrap; padding: 22px 6px 6px; min-height: calc(var(--kb) * 1.53 + 30px); }
+  .hand { display: flex; justify-content: center; flex-wrap: nowrap; padding: 16px 6px 4px; min-height: calc(var(--kb) * 1.53 + 20px); }
   .hand .karte { margin-left: calc(var(--kb) * -0.3); }
   .hand .karte:first-child { margin-left: 0; }
   .hand .karte.spielbar { cursor: pointer; }
@@ -684,6 +684,12 @@ function tischGeaendert(neu) {
     optionen = { schneider: false, schwarz: false, ouvert: false };
   }
   render();
+  // Wird man am Zug, die eigene Hand ins Bild holen (nur falls sie nicht ganz sichtbar ist)
+  const ich = meinPlatz();
+  if (ich >= 0 && neu.amZug === ich && (!alt || alt.amZug !== ich)) {
+    const r = $('meinbereich').getBoundingClientRect();
+    if (r.bottom > window.innerHeight || r.top < 0) $('meinbereich').scrollIntoView({ block: 'end', behavior: 'smooth' });
+  }
 }
 
 // ═════════════════════════════════════════════════════════════════════
