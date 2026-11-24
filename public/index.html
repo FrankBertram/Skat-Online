@@ -852,7 +852,13 @@ async function starteOnline() {
   backend = {
     aktion: async (d) => {
       try { return (await callable(d)).data; }
-      catch (e) { throw new Error(e.message || 'Fehler bei der Verbindung'); }
+      catch (e) {
+        // „internal“ ohne eigenen Text: Function nicht erreichbar (nicht deployt, Netz, CORS)
+        if (e.code === 'functions/internal' && (!e.message || e.message === 'internal')) {
+          throw new Error('Der Spielserver (Cloud Function „skatAktion“) ist nicht erreichbar – ist sie deployt? Sonst bitte später erneut versuchen.');
+        }
+        throw new Error(e.message || 'Fehler bei der Verbindung');
+      }
     }
   };
 
