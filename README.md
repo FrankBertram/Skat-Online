@@ -46,9 +46,9 @@ Karten oder den Skat sehen oder ungültige Züge machen.
    ```
    Durch `"codebase": "skatonline"` in `firebase.json` werden andere Functions
    im Projekt nicht angefasst.
-4. **Webseite**: GitHub-Repo `FrankBertram/Skat-Online`; der Workflow `.github/workflows/pages.yml`
-   veröffentlicht bei jedem Push den Ordner `public/` → https://frankbertram.github.io/Skat-Online/
-   (einmalig im Repo: Settings → Pages → Source „GitHub Actions“).
+4. **Webseite**: GitHub-Repo `FrankBertram/Skat-Online`, GitHub Pages „Deploy from a branch“
+   (`main`, Hauptverzeichnis). `index.html` im Hauptverzeichnis leitet auf `public/` weiter
+   (Parameter wie `?tisch=CODE` bleiben erhalten) → https://frankbertram.github.io/Skat-Online/
 5. **Kartenbilder hochladen** (einmalig, als Admin angemeldet): Übersicht → Verwaltung →
    „Kartenbilder ASS Altenburger“ → alle 32 PNG aus `C:\Temp\Skat-Online\cards` auswählen.
 
