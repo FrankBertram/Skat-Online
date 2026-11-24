@@ -13,8 +13,8 @@
     --kb-basis: clamp(36px, min(7vw, calc((100vh - 410px) / 7.2)), 78px);
     --kb: var(--kb-basis);
     /* gemeinsame Größe für die eigene Hand und die Stichkarten in der Mitte (12 Karten müssen in die Breite passen) */
-    /* Höhe: Kopf, Infoleiste, Sitzreihe ≈ 350 px fest, dazu Mitte (2,55 Karten) + Hand (1,53 Karten + Rand) */
-    --kb-hoehe: calc((100vh - 350px) / 4.1);
+    /* Höhe: Kopf, Infoleiste, Sitzreihe ≈ 350 px fest, dazu Mitte (2,05 Karten) + Hand (1,53 Karten + Rand) */
+    --kb-hoehe: calc((100vh - 350px) / 3.6);
     --kb-spiel: max(44px, min(var(--kb-hoehe), calc((100vw - 480px) / 7.75)));
   }
   * { box-sizing: border-box; }
@@ -70,15 +70,15 @@
   #sitzOben { grid-column: 2; grid-row: 1; }
   #sitzLinks { grid-column: 1; grid-row: 1; }
   #sitzRechts { grid-column: 3; grid-row: 1; }
-  .mitte { grid-column: 1 / -1; grid-row: 2; position: relative; --kb: var(--kb-spiel); min-height: calc(var(--kb) * 2.55); margin-bottom: 4px; }
+  .mitte { grid-column: 1 / -1; grid-row: 2; position: relative; --kb: var(--kb-spiel); min-height: calc(var(--kb) * 2.05); margin-bottom: 4px; }
   .mitte .skat { --kb: var(--kb-basis); }
   .lupe { position: absolute; right: 4px; top: 4px; z-index: 5; padding: 4px 10px; font-size: 15px; background: rgba(255,255,255,.9); }
   .lupe.an { background: var(--gold); border-color: #8a6414; font-weight: 700; }
   /* Stich immer in derselben Form: zwei Karten oben (links/rechts gekippt), eine mittig darunter */
   .karte.stichkarte { position: absolute; left: 50%; top: 50%; }
-  .stichkarte.s-unten  { transform: translate(-50%, -22%); z-index: 2; }
-  .stichkarte.s-links  { transform: translate(-108%, -76%) rotate(-10deg); }
-  .stichkarte.s-rechts { transform: translate(8%, -76%) rotate(10deg); }
+  .stichkarte.s-unten  { transform: translate(-50%, -38%); z-index: 2; }
+  .stichkarte.s-links  { transform: translate(-128%, -62%) rotate(-10deg); }
+  .stichkarte.s-rechts { transform: translate(28%, -62%) rotate(10deg); }
   .stichkarte.alt { opacity: .75; }
   /* Skat in der Tischmitte: verdeckt, beim Aufnehmen (nur für den Alleinspieler) umgedreht */
   .skat { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); display: flex; gap: 8px; }
