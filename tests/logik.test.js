@@ -285,3 +285,30 @@ test('Hand-Sortierung: Farben abwechselnd', () => {
   assert.deepStrictEqual(S.sortiereHand(hand, 'herz'), ['cB', 'hB', 'hK', 'sA', 'd7', 'cZ']);
   assert.deepStrictEqual(S.sortiereHand(hand, 'null'), ['cB', 'cZ', 'hK', 'hB', 'sA', 'd7']);  // Null: B über 10
 });
+
+test('Spielbereit / Pause: nächstes Spiel erst, wenn alle bereit sind', () => {
+  const welt = S.neuerTisch({ name: 'Test', plaetze: 4, maxSpiele: 48, uid: 'u0' });
+  for (let i = 0; i < 4; i++) S.beitreten(welt, 'u' + i, 'Spieler ' + (i + 1), i);
+  S.aktion(welt, 0, { typ: 'starten' });
+  const t = welt.tisch;
+  while (t.phase === 'reizen') S.aktion(welt, t.amZug, { typ: 'passe' });   // eingepasst
+  assert.strictEqual(t.phase, 'spielende');
+  const nr = t.spielNr;
+  S.aktion(welt, 0, { typ: 'bereit' });
+  S.aktion(welt, 1, { typ: 'pause' });
+  S.aktion(welt, 2, { typ: 'bereit' });
+  S.aktion(welt, 3, { typ: 'bereit' });
+  assert.strictEqual(t.phase, 'spielende');            // Platz 2 macht Pause
+  assert.deepStrictEqual(t.pause, [1]);
+  S.aktion(welt, 1, { typ: 'bereit' });                // Pause beendet → alle bereit
+  assert.strictEqual(t.spielNr, nr + 1);
+  assert.strictEqual(t.phase, 'reizen');
+  assert.deepStrictEqual(t.bereit, []);
+  assert.deepStrictEqual(t.pause, []);
+  // Pause bleibt über das Spiel hinaus bestehen
+  S.aktion(welt, 3, { typ: 'pause' });
+  while (t.phase === 'reizen') S.aktion(welt, t.amZug, { typ: 'passe' });
+  [0, 1, 2].forEach(p => S.aktion(welt, p, { typ: 'bereit' }));
+  assert.strictEqual(t.phase, 'spielende');
+  assert.deepStrictEqual(t.pause, [3]);
+});

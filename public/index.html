@@ -110,6 +110,13 @@
               align-items: center; gap: 8px; justify-content: center; pointer-events: none; padding: 8px 14px; border-radius: 14px; margin-bottom: 6px; }
   .aktionen:not(:empty) { background: rgba(0,40,15,.55); box-shadow: 0 2px 10px rgba(0,0,0,.25); }
   .aktionen > * { pointer-events: auto; }
+  .aktionen:not(.mitSkat) { max-width: min(620px, 94vw); }
+  .bereitliste { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; font-size: 14px; }
+  .bereitliste span { background: rgba(0,0,0,.35); border-radius: 12px; padding: 3px 10px; }
+  .bereitliste span.ja { background: rgba(26,127,55,.85); }
+  .bereitliste span.pause { background: rgba(198,40,40,.85); font-weight: 700; }
+  .abz.pause-abz { background: var(--rot) !important; color: #fff !important; font-weight: 700; }
+  .abz.bereit-abz { background: var(--gruen) !important; color: #fff !important; }
   /* Skataufnahme: verdeckter Skat (so groß wie die Handkarten) links neben der Ansage-Box, beides zusammen zentriert */
   .aktionen.mitSkat { background: none; box-shadow: none; padding: 0; align-self: center; }
   .skatreihe { display: flex; align-items: center; justify-content: center; gap: 18px; }
@@ -118,7 +125,7 @@
   .skatreihe .skatkarten.unsichtbar { visibility: hidden; }
   @keyframes ausblenden { to { opacity: 0; } }
   /* feste Breite: Frage „Skat aufnehmen?“ und „Drücken“ sind verschieden lang – der Skat soll nicht zur Seite rutschen */
-  .aktionen.mitSkat .aktionsbox { width: min(600px, 52vw); }
+  .aktionen.mitSkat .aktionsbox { width: min(560px, 44vw); }
   .aktionen.mitSkat .frage { white-space: normal; }
   .aktionsbox { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 14px;
                 background: rgba(0,40,15,.55); box-shadow: 0 2px 10px rgba(0,0,0,.25); }
@@ -330,8 +337,8 @@
 
 <div id="toast" class="versteckt"></div>
 
-<script src="skatlogik.js"></script>
-<script src="kartenbild.js"></script>
+<script src="skatlogik.js?v=2026112601"></script>
+<script src="kartenbild.js?v=2026112601"></script>
 <script type="module">
 const S = window.SkatLogik;
 const params = new URLSearchParams(location.search);
@@ -537,6 +544,14 @@ function render() {
   verbindeSitzKnoepfe();
 }
 
+// „Pause“ (immer sichtbar) bzw. „bereit“ (bei Spielende) als Abzeichen
+function bereitAbz(p) {
+  const t = tisch;
+  if ((t.pause || []).includes(p)) return `<span class="abz pause-abz">⏸ Pause</span>`;
+  if (t.phase === 'spielende' && (t.bereit || []).includes(p)) return `<span class="abz bereit-abz">✅ bereit</span>`;
+  return '';
+}
+
 function sitzHTML(p) {
   const t = tisch;
   const s = t.spieler[p];
@@ -547,6 +562,7 @@ function sitzHTML(p) {
   }
   let h = `<div class="nm">${esc(s.name)}</div><div class="rolle">${esc(rolleVon(p))}</div>`;
   if (t.alleinspieler === p) h += `<span class="abz allein">${esc(alleinText())}</span>`;
+  h += bereitAbz(p);
   if (t.phase === 'reizen' && t.reizen) {
     const r = t.reizen;
     if ((r.gepasst || []).includes(p)) h += `<span class="abz passe">passe</span>`;
@@ -669,8 +685,17 @@ function renderAktionen(ich) {
       }
     }
   } else if (t.phase === 'spielende') {
-    h = `<div class="frage">Spiel ${t.spielNr} beendet.</div>`;
-    if (ich >= 0) h += `<div class="knoepfe">${knopf('Nächstes Spiel geben', { typ: 'weiter' }, 'primaer')}</div>`;
+    const bereit = t.bereit || [], pause = t.pause || [];
+    h = `<div class="frage">Spiel ${t.spielNr} beendet – das nächste Spiel wird gegeben, sobald alle spielbereit sind (${bereit.length}/${t.plaetze}).</div>`;
+    h += `<div class="bereitliste">${t.spieler.map((sp, p) => sp ? `<span class="${bereit.includes(p) ? 'ja' : pause.includes(p) ? 'pause' : ''}">${
+      bereit.includes(p) ? '✅' : pause.includes(p) ? '⏸' : '⏳'} ${esc(sp.name)}</span>` : '').join('')}</div>`;
+    if (ich >= 0) {
+      h += `<div class="knoepfe">`;
+      if (!bereit.includes(ich)) h += knopf('✅ Spielbereit', { typ: 'bereit' }, 'primaer');
+      if (!pause.includes(ich)) h += knopf('⏸ Pause', { typ: 'pause' });
+      if (DEMO && bereit.length < t.plaetze) h += knopf('Alle bereit (Übung)', { typ: 'bereit', demoAlle: true });
+      h += `</div>`;
+    }
   } else if (t.phase === 'beendet') {
     h = `<div class="frage">Die Liste ist beendet. Ergebnis siehe Liste (Knopf „📋 Liste“).</div>`;
   }
@@ -713,7 +738,8 @@ function renderAktionen(ich) {
 }
 
 function ansageHTML(hand) {
-  const arten = [['kreuz', '♣ Kreuz'], ['pik', '♠ Pik'], ['herz', '♥ Herz'], ['karo', '♦ Karo'], ['grand', 'Grand'], ['null', 'Null']];
+  const arten = [['grand', 'Grand'], ['kreuz', '<span class="mini" style="color:#111">♣</span> Kreuz'], ['pik', '<span class="mini" style="color:#111">♠</span> Pik'],
+    ['herz', '<span class="mini" style="color:#d1242f">♥</span> Herz'], ['karo', '<span class="mini" style="color:#d1242f">♦</span> Karo'], ['null', 'Null']];
   let h = `<div class="knoepfe spielwahl">`;
   arten.forEach(([a, txt]) => { h += `<button data-art="${a}" class="${gewaehlteArt === a ? 'gewaehlt' : ''}">${txt}</button>`; });
   h += `</div><div class="knoepfe">`;
@@ -767,6 +793,7 @@ function renderMeinBereich(ich) {
   let kopf = `<span class="nm">${esc(nameVon(ich))}</span> <span>${esc(rolleVon(ich))}</span>`;
   if (t.alleinspieler === ich) kopf += ` <span class="abz">${esc(alleinText())}</span>`;
   if ((t.phase === 'spielen' || t.phase === 'spielende') && t.aktive.includes(ich) && t.spiel) kopf += ` <span>${t.stichZahl[ich]} Stiche</span>`;
+  kopf += bereitAbz(ich);
   const sitzt = t.status === 'laeuft' && t.aktive && !t.aktive.includes(ich);
   if (sitzt) {
     // Unten sitzt die Vorhand – man sieht nur ihre verdeckten Karten
@@ -969,7 +996,8 @@ function starteDemo() {
   backend = {
     aktion: async (d) => {
       const w = structuredClone(welt);
-      S.aktion(w, ansicht, d);   // wirft bei ungültigen Zügen
+      if (d.demoAlle) w.tisch.spieler.forEach((sp, p) => { if (w.tisch.phase === 'spielende') S.aktion(w, p, { typ: d.typ }); });
+      else S.aktion(w, ansicht, d);   // wirft bei ungültigen Zügen
       welt = w;
       setTimeout(aktualisieren, 0);
       return { ok: true };

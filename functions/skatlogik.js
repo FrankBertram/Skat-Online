@@ -276,6 +276,7 @@
     aktive.forEach((p, i) => { welt.haende[p] = deck.slice(i * 10, i * 10 + 10); });
     welt.geheim = { skat: deck.slice(30, 32), gedrueckt: [], augenAllein: 0, augenGegner: 0, spitzen: null };
     t.spielNr += 1;
+    t.bereit = [];            // Pause bleibt bestehen, bis der Spieler wieder „Spielbereit“ meldet
     t.phase = 'reizen';
     t.aktive = aktive;
     t.reizen = { stufe: 1, sager: aktive[1], hoerer: aktive[0], wert: 0, frage: 'sagen', gepasst: [] };
@@ -629,6 +630,17 @@
     geben(welt);
   }
 
+  // Spielbereit / Pause: das nächste Spiel wird gegeben, sobald alle Plätze spielbereit sind
+  function bereitMelden(welt, platz, bereit) {
+    const t = welt.tisch;
+    if (t.status !== 'laeuft') fehler('Die Liste läuft gerade nicht.');
+    t.bereit = (t.bereit || []).filter(p => p !== platz);
+    t.pause = (t.pause || []).filter(p => p !== platz);
+    if (bereit) t.bereit.push(platz); else t.pause.push(platz);
+    t.log = name(t, platz) + (bereit ? ' ist spielbereit' : ' macht Pause');
+    if (bereit && t.phase === 'spielende' && t.bereit.length >= t.plaetze) naechstesSpiel(welt);
+  }
+
   // Seeger-Summen je Platz aus der Liste
   function summen(tisch) {
     const n = tisch.plaetze;
@@ -664,6 +676,8 @@
       case 'zustimmen': anspruchBeantworten(welt, platz, a.ja === true); break;
       case 'aufgeben': aufgeben(welt, platz); break;
       case 'weiter': naechstesSpiel(welt); break;
+      case 'bereit': bereitMelden(welt, platz, true); break;
+      case 'pause': bereitMelden(welt, platz, false); break;
       default: fehler('Unbekannte Aktion: ' + a.typ);
     }
     t.version = (t.version || 0) + 1;
