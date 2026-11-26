@@ -70,9 +70,13 @@
   #sitzOben { grid-column: 2; grid-row: 1; }
   #sitzLinks { grid-column: 1; grid-row: 1; }
   #sitzRechts { grid-column: 3; grid-row: 1; }
+  /* Geber (setzt aus) seitlich zwischen zwei Spielern: kompakter Kasten oben in der Tischmitte-Reihe */
+  #sitzLinksMitte { grid-column: 1; grid-row: 2; z-index: 5; }
+  #sitzRechtsMitte { grid-column: 3; grid-row: 2; z-index: 5; }
+  body.amTisch .sitz.geberplatz, .sitz.geberplatz { height: auto; min-height: 0; align-self: start; margin-top: 6px; }
   .mitte { grid-column: 1 / -1; grid-row: 2; position: relative; --kb: var(--kb-spiel); min-height: calc(var(--kb) * 2.05); margin-bottom: 4px; }
   .mitte .skat { --kb: var(--kb-basis); }
-  .lupe { position: absolute; right: 4px; top: 4px; z-index: 5; padding: 4px 10px; font-size: 15px; background: rgba(255,255,255,.9); }
+  .lupe { position: absolute; right: 4px; bottom: 4px; z-index: 5; padding: 4px 10px; font-size: 15px; background: rgba(255,255,255,.9); }
   .lupe.an { background: var(--gold); border-color: #8a6414; font-weight: 700; }
   /* Stich immer in derselben Form: zwei Karten oben (links/rechts gekippt), eine mittig darunter */
   .karte.stichkarte { position: absolute; left: 50%; top: 50%; }
@@ -150,6 +154,7 @@
   .hand .karte.gewaehlt { transform: translateY(-20px); box-shadow: 0 0 0 3px var(--gold), 0 4px 10px rgba(0,0,0,.4); }
   .hand.waehlbar .karte { cursor: pointer; }
   .zuschauer { padding: 18px; font-size: 15px; opacity: .95; }
+  .hand .ruecken-karte { cursor: default; }
 
   /* ── Am Tisch: alles auf feste Fensterhöhe, Reihen mit festen Höhen – der grüne Tisch ändert seine Größe nie ── */
   body.amTisch { height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
@@ -303,6 +308,8 @@
     <div class="sitz" id="sitzLinks"></div>
     <div class="mitte" id="mitte"></div>
     <div class="sitz" id="sitzRechts"></div>
+    <div class="sitz geberplatz" id="sitzLinksMitte"></div>
+    <div class="sitz geberplatz" id="sitzRechtsMitte"></div>
     <div class="aktionen" id="aktionen"></div>
     <div class="meinbereich" id="meinbereich"></div>
   </div>
@@ -449,12 +456,28 @@ function rolleVon(p) {
   return p === tisch.geber ? 'Geber – setzt aus' : '';
 }
 // Plätze relativ zum Betrachter: unten = ich, dann im Uhrzeigersinn links, oben, rechts
+// 4er-Tisch im Spiel: die drei aktiven Spieler immer unten, oben links, oben rechts; der Geber im Uhrzeigersinn
+// dazwischen (links in der Mitte, oben in der Mitte oder rechts in der Mitte). Setzt man selbst aus, sitzt
+// unten die Vorhand (verdeckt) und der eigene Geberplatz rechts.
+function unterePerson() {
+  const ich = meinPlatz();
+  const t = tisch;
+  if (t.plaetze === 4 && t.aktive && t.aktive.length === 3 && ich >= 0 && !t.aktive.includes(ich)) return t.aktive[0];
+  return ich;
+}
 function positionen() {
-  const ich = Math.max(0, meinPlatz());
-  const n = tisch.plaetze;
+  const t = tisch;
+  const n = t.plaetze;
+  const unten = Math.max(0, unterePerson());
   const pos = {};
-  pos[ich] = 'unten';
-  if (n === 4) { pos[(ich + 1) % 4] = 'links'; pos[(ich + 2) % 4] = 'oben'; pos[(ich + 3) % 4] = 'rechts'; }
+  pos[unten] = 'unten';
+  if (n === 4 && t.aktive && t.aktive.length === 3 && t.aktive.includes(unten)) {
+    const reihe = [1, 2, 3].map(d => (unten + d) % 4);          // im Uhrzeigersinn
+    const aktiv = reihe.filter(p => t.aktive.includes(p));
+    pos[aktiv[0]] = 'links'; pos[aktiv[1]] = 'rechts';
+    const geber = reihe.find(p => !t.aktive.includes(p));
+    pos[geber] = ['linksMitte', 'oben', 'rechtsMitte'][reihe.indexOf(geber)];
+  } else if (n === 4) { pos[(unten + 1) % 4] = 'links'; pos[(unten + 2) % 4] = 'oben'; pos[(unten + 3) % 4] = 'rechts'; }
   else { pos[(ich + 1) % 3] = 'links'; pos[(ich + 2) % 3] = 'rechts'; }
   return pos;
 }
@@ -495,7 +518,8 @@ function render() {
   if (bb) bb.onclick = () => { if (confirm('Tisch wirklich beenden? Danach kann nicht weitergespielt werden.')) aktion({ typ: 'beenden' }); };
 
   // Sitze
-  const sitzEl = { oben: $('sitzOben'), links: $('sitzLinks'), rechts: $('sitzRechts') };
+  const sitzEl = { oben: $('sitzOben'), links: $('sitzLinks'), rechts: $('sitzRechts'),
+                   linksMitte: $('sitzLinksMitte'), rechtsMitte: $('sitzRechtsMitte') };
   Object.values(sitzEl).forEach(el => { el.innerHTML = ''; el.classList.add('versteckt'); el.classList.remove('amzug'); });
   for (let p = 0; p < t.plaetze; p++) {
     const wo = pos[p];
@@ -744,8 +768,19 @@ function renderMeinBereich(ich) {
   if (t.alleinspieler === ich) kopf += ` <span class="abz">${esc(alleinText())}</span>`;
   if ((t.phase === 'spielen' || t.phase === 'spielende') && t.aktive.includes(ich) && t.spiel) kopf += ` <span>${t.stichZahl[ich]} Stiche</span>`;
   const sitzt = t.status === 'laeuft' && t.aktive && !t.aktive.includes(ich);
-  if (sitzt && t.phase !== 'spielende') {
-    el.innerHTML = `<div class="zuschauer">${kopf}<br>Du hast gegeben und setzt dieses Spiel aus – du siehst nur die gespielten Karten.</div>`;
+  if (sitzt) {
+    // Unten sitzt die Vorhand – man sieht nur ihre verdeckten Karten
+    const vh = unterePerson();
+    const anzahl = (t.kartenAnzahl && t.kartenAnzahl[vh]) || 0;
+    const r = `<div class="karte ruecken-karte"><img src="${window.KartenBild.rueckenUrl()}" alt=""></div>`;
+    let vkopf = `<span class="nm">${esc(nameVon(vh))}</span> <span>${esc(rolleVon(vh))}</span>`;
+    if (t.alleinspieler === vh) vkopf += ` <span class="abz">${esc(alleinText())}</span>`;
+    if ((t.phase === 'spielen' || t.phase === 'spielende') && t.spiel) vkopf += ` <span>${t.stichZahl[vh]} Stiche</span>`;
+    const offen = t.offeneKarten && t.alleinspieler === vh;
+    const karten = offen ? S.sortiereHand(t.offeneKarten, t.spiel.art).map(k => karteHTML(k)).join('') : r.repeat(anzahl);
+    el.innerHTML = `<div class="handzeile"><div class="meinkopf">${vkopf}</div>` +
+      `<div class="hand" id="meineHand">${karten}</div><div class="spielknoepfe"></div></div>`;
+    el.classList.toggle('amzug', t.amZug === vh);
     return;
   }
   const art = aktuelleArt();
