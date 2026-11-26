@@ -591,9 +591,9 @@ function renderMitte(pos) {
   if (!lupeErlaubt) lupeAn = false;
   const lupe = lupeAn;
   if (lupe || (karten.length === 0 && t.letzterStich && Date.now() < zeigeStichBis)) { karten = t.letzterStich.karten; alt = true; }
-  // Lage nach Reihenfolge im Stich: erste Karte links, zweite rechts, dritte in der Mitte
-  const LAGE = ['s-links', 's-rechts', 's-unten'];
-  karten.forEach((s, i) => { h += karteHTML(s.karte, 'stichkarte ' + LAGE[i] + (alt && !lupe ? ' alt' : '')); });
+  // Stichkarte vor dem Platz des Spielers: unten (mittig), oben links, oben rechts
+  const LAGE = { unten: 's-unten', links: 's-links', rechts: 's-rechts' };
+  karten.forEach(s => { h += karteHTML(s.karte, 'stichkarte ' + (LAGE[pos[s.platz]] || 's-unten') + (alt && !lupe ? ' alt' : '')); });
   if (lupeErlaubt) h += `<button id="btnLupe" class="lupe${lupeAn ? ' an' : ''}" title="Letzten Stich ansehen">🔍 ${lupeAn ? 'Zurück' : 'Letzter Stich'}</button>`;
   let meldung = '';
   if (lupe) meldung = `🔍 Letzter Stich – an ${esc(nameVon(t.letzterStich.gewinner))}`;
