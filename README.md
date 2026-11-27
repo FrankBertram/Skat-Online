@@ -69,6 +69,9 @@ Wer sich ohne Freischaltung anmeldet, sieht nur „Freischaltung beantragen“ (
 bei jedem Aufruf (positives Ergebnis 5 Minuten zwischengespeichert), die Firestore-Regeln lassen
 Tische und Kartenbilder nur Mitglieder lesen.
 
+In der Verwaltung kann ein Spielleiter ein Mitglied auch direkt per **E-Mail-Adresse oder UID**
+freischalten (das Konto muss sich vorher einmal angemeldet haben).
+
 ## Ausprobieren ohne Firebase
 
 `npm run demo`, dann http://localhost:8771/?demo – alle 4 Plätze an einem PC
@@ -80,8 +83,22 @@ Tisch anlegen → Code bzw. Link an die Mitspieler → Plätze besetzen → „S
 (erster Geber zufällig) → Reizen (Mittelhand sagt, Vorhand hört, dann Hinterhand) →
 Skat aufnehmen und drücken oder Hand → Ansage (Farbe/Grand/Null, Schneider/Schwarz
 angesagt und Ouvert nur bei Hand; Null ouvert auch mit Skat) → 10 Stiche →
-Abrechnung → „Nächstes Spiel geben“. Nach der eingestellten Spielanzahl
+Abrechnung → jeder klickt **✅ Spielbereit** (oder **⏸ Pause**, für alle sichtbar); sind alle
+bereit, wird automatisch das nächste Spiel gegeben. Nach der eingestellten Spielanzahl
 (Standard 48 bzw. 36) ist die Liste beendet.
+
+**Tisch:** Die drei aktiven Spieler sitzen immer unten (man selbst), oben links und oben rechts;
+am 4er-Tisch steht der Geber im Uhrzeigersinn dazwischen (links, oben oder rechts in der Mitte).
+Wer selbst gibt, sieht unten die verdeckten Karten der Vorhand und den eigenen Platz rechts.
+Jede Stichkarte liegt vor dem Platz des Spielers. **🔍 Letzter Stich** zeigt den letzten Stich,
+solange man im laufenden Stich noch keine Karte gespielt hat. Der Tisch hat eine feste Höhe
+(Fensterhöhe), nichts verschiebt sich; auf kleinen Bildschirmen (unter 900 px Breite) scrollt die Seite.
+
+**Liste:** erscheint nach jedem Spiel als Tafel rechts, sonst über **📋 Liste**; **🖨 Drucken / PDF**
+druckt Rangfolge und Liste. **⚠ offline** am Platz: seit über 100 Sekunden kein Lebenszeichen
+(jeder Browser meldet sich alle 30 Sekunden). **🔔 Ton** (Kopfzeile, abschaltbar) und der Tab-Titel
+melden, wenn man am Zug ist. Tische, die 30 Tage unverändert sind, werden automatisch gelöscht
+(beim Anlegen eines neuen Tisches).
 
 Neben der eigenen Hand: **Sortieren** wie Grand, Null, ♣, ♠, ♥ oder ♦, Farben abwechselnd schwarz/rot
 (Kreuz, Herz, Pik, Karo; bei Farbspielen Trumpf vorn, dann reihum) (nach der Ansage

@@ -172,6 +172,30 @@
   body.amTisch .mitte { min-height: 0; }
   body.amTisch .meinbereich { min-height: 0; overflow: visible; }
 
+  /* ── Kleine Bildschirme (Tablet hochkant, Handy): kein festes Raster, Seite darf scrollen ── */
+  @media (max-width: 900px), (max-height: 540px) {
+    :root { --kb-spiel: max(40px, min(calc((100vh - 200px) / 4.1), calc((100vw - 40px) / 7.75))); }
+    body.amTisch { height: auto; display: block; overflow: auto; }
+    body.amTisch #tischAnsicht { padding: 6px; }
+    body.amTisch .filz { height: auto; overflow: visible; grid-template-rows: auto auto auto; padding: 6px; }
+    body.amTisch .sitz { height: auto; min-height: 0; min-width: 0; padding: 5px 6px; }
+    body.amTisch .mitte { min-height: calc(var(--kb) * 2.05 + 40px); }
+    .infoleiste { height: auto; flex-wrap: wrap; white-space: normal; gap: 6px 10px; font-size: 13px; padding: 6px 10px; }
+    .handzeile { flex-wrap: wrap; gap: 6px; }
+    .meinkopf { flex-direction: row; flex-wrap: wrap; justify-content: center; align-items: center; min-width: 0; width: 100%; order: -1; gap: 8px; }
+    .hand { padding: 12px 2px 4px; }
+    .hand.zwoelf .karte { margin-left: min(calc(var(--kb) * -0.25), calc((100vw - 40px - 12 * var(--kb)) / 11)); }
+    .sortierung { grid-template-columns: repeat(6, auto); }
+    .sortierung .titel { display: none; }
+    .spielknoepfe { flex-direction: row; min-width: 0; }
+    .mitte .meldung { top: auto; bottom: 2px; left: 4px; transform: none; font-size: 14px; max-width: 62%; }
+    .aktionen.mitSkat .aktionsbox { width: auto; max-width: 62vw; }
+    .skatreihe .skatkarten { --kb: calc(var(--kb-spiel) * .7); }
+    .sitz .ruecken span { width: 14px; height: 21px; margin-left: -9px; }
+    .sitz .ruecken { height: 22px; }
+    header.kopf h1 { font-size: 16px; }
+  }
+
   /* ── Karten (SVG oder ASS-Altenburger-Bilder, Seitenverhältnis 262 × 400) ── */
   .karte { width: var(--kb); height: calc(var(--kb) * 1.527); border-radius: calc(var(--kb) * .07); overflow: hidden;
            background: #fff; box-shadow: 0 2px 5px rgba(0,0,0,.45); position: relative; flex: 0 0 auto;
@@ -186,7 +210,9 @@
   .seite { display: flex; flex-direction: column; gap: 12px; position: fixed; right: 12px; top: 64px; width: min(380px, 94vw);
            max-height: calc(100vh - 80px); overflow-y: auto; z-index: 20; padding: 10px; border-radius: 14px;
            background: rgba(233,238,242,.97); box-shadow: 0 6px 24px rgba(0,0,0,.35); }
-  .seite .schliessen { align-self: flex-end; padding: 2px 10px; font-size: 13px; margin-bottom: -6px; }
+  .seite .seitenkopf { display: flex; justify-content: space-between; gap: 8px; margin-bottom: -6px; }
+  .seite .seitenkopf button { padding: 2px 10px; font-size: 13px; }
+  .abz.offline-abz { background: #555 !important; color: #ffd24d !important; font-weight: 700; }
   .seite .box { background: #fff; border-radius: 10px; padding: 10px 12px; }
   .seite h3 { margin: 0 0 8px; font-size: 16px; }
   .ergebnis.gew { border-left: 6px solid var(--gruen); }
@@ -217,6 +243,7 @@
       <option value="altenburger">ASS Altenburger</option>
       <option value="eigen">Eigene (Turnierbild)</option>
     </select></label>
+  <button id="btnTon" title="Ton, wenn du am Zug bist">🔔 Ton an</button>
   <button id="btnLobby" class="versteckt">← Übersicht</button>
   <button id="btnAbmelden" class="versteckt">Abmelden</button>
 </header>
@@ -296,6 +323,13 @@
     <ul class="tischliste" id="antraegeListe"><li class="hinweis">Lade …</li></ul>
     <h3 style="font-size:16px;margin:14px 0 8px">Freigeschaltete Mitglieder</h3>
     <ul class="tischliste" id="mitgliederListe"><li class="hinweis">Lade …</li></ul>
+    <h3 style="font-size:16px;margin:14px 0 8px">Mitglied direkt freischalten</h3>
+    <div class="zeile">
+      <input id="neuMitgliedWer" placeholder="E-Mail-Adresse oder UID" style="flex:1;min-width:220px">
+      <input id="neuMitgliedName" maxlength="40" placeholder="Name (optional)" style="min-width:160px">
+      <button id="btnMitgliedNeu" class="primaer">Freischalten</button>
+    </div>
+    <p class="hinweis">Die Person muss sich vorher einmal auf dieser Seite angemeldet haben (Google oder Anmeldelink).</p>
     <div id="bilderVerwaltung" class="versteckt">
       <h3 style="font-size:16px;margin:14px 0 8px">Kartenbilder ASS Altenburger (nur Admin)</h3>
       <p class="hinweis">Die Bilder liegen geschützt in Firestore und sind nur für freigeschaltete Mitglieder lesbar.
@@ -321,13 +355,11 @@
     <div class="meinbereich" id="meinbereich"></div>
   </div>
   <div class="seite versteckt" id="seite">
-    <button class="schliessen" id="btnSeiteZu" title="Liste schließen">✕ Schließen</button>
-    <div class="box ergebnis versteckt" id="ergebnisBox"></div>
-    <div class="box">
-      <h3>Letzter Stich</h3>
-      <div id="letzterStich" class="hinweis">–</div>
-      <div class="log" id="logZeile" style="margin-top:6px"></div>
+    <div class="seitenkopf">
+      <button id="btnListeDrucken" title="Liste drucken oder als PDF speichern">🖨 Drucken / PDF</button>
+      <button class="schliessen" id="btnSeiteZu" title="Liste schließen">✕ Schließen</button>
     </div>
+    <div class="box ergebnis versteckt" id="ergebnisBox"></div>
     <div class="box">
       <h3>Liste (Seeger-Fabian)</h3>
       <div class="listen-scroll" id="listeBox"></div>
@@ -337,8 +369,8 @@
 
 <div id="toast" class="versteckt"></div>
 
-<script src="skatlogik.js?v=2026112601"></script>
-<script src="kartenbild.js?v=2026112601"></script>
+<script src="skatlogik.js?v=2026112701"></script>
+<script src="kartenbild.js?v=2026112701"></script>
 <script type="module">
 const S = window.SkatLogik;
 const params = new URLSearchParams(location.search);
@@ -384,6 +416,43 @@ let sortierArt = null;     // vom Spieler gewählte Sortierung (null = automatis
 let optionen = { schneider: false, schwarz: false, ouvert: false };
 let letzterStichNr = 0, zeigeStichBis = 0;
 let lupeAn = false;        // letzten Stich in der Mitte ansehen (bis zur eigenen Karte)
+const OFFLINE_NACH_MS = 100000;   // kein Lebenszeichen seit 100 s → „offline“ (Hintergrund-Tabs melden sich nur 1×/Minute)
+let tonAn = localStorage.getItem('skatonline_ton') !== 'aus';
+const TITEL = document.title;
+let audioCtx = null;
+// Kurzer Doppelton, wenn man am Zug ist
+function zugTon() {
+  if (!tonAn) return;
+  try {
+    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    [[660, 0], [880, 0.16]].forEach(([f, start]) => {
+      const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+      o.type = 'sine'; o.frequency.value = f;
+      const t0 = audioCtx.currentTime + start;
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.exponentialRampToValueAtTime(0.18, t0 + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.14);
+      o.connect(g); g.connect(audioCtx.destination);
+      o.start(t0); o.stop(t0 + 0.16);
+    });
+  } catch (e) { /* kein Ton möglich */ }
+}
+// Tab-Titel zeigt, dass man am Zug ist (blinkt, solange das Fenster im Hintergrund ist)
+let titelTakt = false;
+function aktualisiereTitel() {
+  const dran = !DEMO && tisch && meinPlatz() >= 0 && (tisch.amZug === meinPlatz() ||
+    (tisch.phase === 'spielende' && !(tisch.bereit || []).includes(meinPlatz()) && !(tisch.pause || []).includes(meinPlatz())));
+  titelTakt = !titelTakt;
+  document.title = dran ? ((document.hidden && titelTakt ? '🔔 ' : '● ') + (tisch.amZug === meinPlatz() ? 'Du bist am Zug' : 'Spielbereit?') + ' – Skat-Online') : TITEL;
+}
+setInterval(aktualisiereTitel, 1000);
+function istOffline(p) {
+  const t = tisch;
+  if (DEMO || !t || !t.spieler[p] || t.status === 'beendet' || p === meinPlatz()) return false;
+  const g = t.gesehen && t.gesehen[p];
+  return !!g && Date.now() - g > OFFLINE_NACH_MS;
+}
 let listeOffen = null;     // Liste-Tafel: null = automatisch (nach dem Spiel), true/false = vom Spieler gewählt
 let abmeldenTisch = () => {};
 let backend = null;
@@ -524,7 +593,16 @@ function render() {
   const bb = $('btnTischBeenden');
   if (bb) bb.onclick = () => { if (confirm('Tisch wirklich beenden? Danach kann nicht weitergespielt werden.')) aktion({ typ: 'beenden' }); };
 
-  // Sitze
+  renderSitze(pos);
+  renderMitte(pos);
+  renderAktionen(ich);
+  renderMeinBereich(ich);
+  renderSeite();
+  verbindeSitzKnoepfe();
+}
+
+function renderSitze(pos) {
+  const t = tisch;
   const sitzEl = { oben: $('sitzOben'), links: $('sitzLinks'), rechts: $('sitzRechts'),
                    linksMitte: $('sitzLinksMitte'), rechtsMitte: $('sitzRechtsMitte') };
   Object.values(sitzEl).forEach(el => { el.innerHTML = ''; el.classList.add('versteckt'); el.classList.remove('amzug'); });
@@ -536,17 +614,14 @@ function render() {
     el.classList.toggle('amzug', t.amZug === p);
     el.innerHTML = sitzHTML(p);
   }
-
-  renderMitte(pos);
-  renderAktionen(ich);
-  renderMeinBereich(ich);
-  renderSeite();
-  verbindeSitzKnoepfe();
 }
+// Offline-Anzeige regelmäßig auffrischen (ohne die Knöpfe und Auswahlfelder neu zu zeichnen)
+setInterval(() => { if (tisch && !DEMO) { renderSitze(positionen()); verbindeSitzKnoepfe(); } }, 15000);
 
 // „Pause“ (immer sichtbar) bzw. „bereit“ (bei Spielende) als Abzeichen
 function bereitAbz(p) {
   const t = tisch;
+  if (istOffline(p)) return `<span class="abz offline-abz" title="Seit über einer Minute kein Lebenszeichen – Browser geschlossen oder keine Verbindung">⚠ offline</span>`;
   if ((t.pause || []).includes(p)) return `<span class="abz pause-abz">⏸ Pause</span>`;
   if (t.phase === 'spielende' && (t.bereit || []).includes(p)) return `<span class="abz bereit-abz">✅ bereit</span>`;
   return '';
@@ -574,7 +649,7 @@ function sitzHTML(p) {
   }
   if (t.offeneKarten && t.alleinspieler === p) {
     h += `<div class="offen">${S.sortiereHand(t.offeneKarten, t.spiel.art).map(k => karteHTML(k)).join('')}</div>`;
-  } else if (t.kartenAnzahl[p] > 0) {
+  } else if (t.kartenAnzahl[p] > 0 && t.phase !== 'spielende' && t.phase !== 'beendet') {
     h += `<div class="ruecken">${'<span></span>'.repeat(t.kartenAnzahl[p])}</div>`;
   }
   return h;
@@ -798,7 +873,7 @@ function renderMeinBereich(ich) {
   if (sitzt) {
     // Unten sitzt die Vorhand – man sieht nur ihre verdeckten Karten
     const vh = unterePerson();
-    const anzahl = (t.kartenAnzahl && t.kartenAnzahl[vh]) || 0;
+    const anzahl = t.phase === 'spielende' ? 0 : (t.kartenAnzahl && t.kartenAnzahl[vh]) || 0;
     const r = `<div class="karte ruecken-karte"><img src="${window.KartenBild.rueckenUrl()}" alt=""></div>`;
     let vkopf = `<span class="nm">${esc(nameVon(vh))}</span> <span>${esc(rolleVon(vh))}</span>`;
     if (t.alleinspieler === vh) vkopf += ` <span class="abz">${esc(alleinText())}</span>`;
@@ -811,7 +886,8 @@ function renderMeinBereich(ich) {
     return;
   }
   const art = aktuelleArt();
-  const karten = S.sortiereHand(meineKarten, art);
+  // nach dem Spiel (auch eingepasst) liegen keine Karten mehr auf der Hand
+  const karten = t.phase === 'spielende' || t.phase === 'beendet' ? [] : S.sortiereHand(meineKarten, art);
   const spielen = t.phase === 'spielen' && t.amZug === ich && !beschaeftigt;
   const erlaubt = spielen ? S.gueltigeKarten(meineKarten, t.stich, t.spiel.art) : [];
   const druecken = t.phase === 'druecken' && t.alleinspieler === ich;
@@ -826,7 +902,7 @@ function renderMeinBereich(ich) {
   const sortKnoepfe = [['grand', 'Grand'], ['null', 'Null'], ['kreuz', '<span class="mini f-c">♣</span>'], ['pik', '<span class="mini f-s">♠</span>'],
     ['herz', '<span class="mini f-h">♥</span>'], ['karo', '<span class="mini f-d">♦</span>']]
     .map(([a, txt]) => `<button data-sort="${a}" class="${art === a ? 'aktiv' : ''}" title="Hand sortieren wie ${S.SPIELARTEN[a].name}">${txt}</button>`).join('');
-  const sortierung = meineKarten.length ? `<div class="sortierung"><span class="titel">Sortieren</span>${sortKnoepfe}</div>` : '';
+  const sortierung = karten.length ? `<div class="sortierung"><span class="titel">Sortieren</span>${sortKnoepfe}</div>` : '';
   // Karten zeigen / Aufgeben (nur Alleinspieler im laufenden Spiel)
   let spielKn = '';
   if (t.phase === 'spielen' && ich === t.alleinspieler && !t.anspruch) {
@@ -870,7 +946,14 @@ function seiteSichtbar() {
 
 function renderSeite() {
   const t = tisch;
-  $('seite').classList.toggle('versteckt', !seiteSichtbar());
+  const seite = $('seite');
+  seite.classList.toggle('versteckt', !seiteSichtbar());
+  // rechts unterhalb der Spielerreihe und des Geberplatzes, damit kein Mitspieler verdeckt wird
+  if (window.innerWidth > 900 && window.innerHeight > 540) {
+    const oben = Math.round($('filz').getBoundingClientRect().top + 126 + 78);
+    seite.style.top = oben + 'px';
+    seite.style.maxHeight = `calc(100vh - ${oben + 12}px)`;
+  } else { seite.style.top = ''; seite.style.maxHeight = ''; }
   // Ergebnis des letzten Spiels
   const eb = $('ergebnisBox');
   const e = t.ergebnis;
@@ -890,11 +973,6 @@ function renderSeite() {
     }
   } else eb.classList.add('versteckt');
 
-  // Letzter Stich
-  $('letzterStich').innerHTML = t.letzterStich
-    ? t.letzterStich.karten.map(s => miniKarte(s.karte)).join(' ') + ` → ${esc(nameVon(t.letzterStich.gewinner))}`
-    : '–';
-  $('logZeile').textContent = t.log || '';
 
   // Liste
   const n = t.plaetze;
@@ -936,12 +1014,53 @@ function spielerName() {
 
 $('mitte').addEventListener('click', e => { if (e.target.closest('#btnLupe')) { lupeAn = !lupeAn; render(); } });
 $('btnSeiteZu').onclick = () => { listeOffen = false; render(); };
+$('btnTon').onclick = () => {
+  tonAn = !tonAn; localStorage.setItem('skatonline_ton', tonAn ? 'an' : 'aus');
+  $('btnTon').textContent = tonAn ? '🔔 Ton an' : '🔕 Ton aus';
+  if (tonAn) zugTon();
+};
+$('btnTon').textContent = tonAn ? '🔔 Ton an' : '🔕 Ton aus';
+
+// Liste drucken bzw. über den Druckdialog als PDF speichern
+$('btnListeDrucken').onclick = () => {
+  if (!tisch) return;
+  const t = tisch;
+  const sum = S.summen(t);
+  const rang = t.spieler.map((sp, p) => ({ name: sp ? sp.name : 'Platz ' + (p + 1), ...sum[p] })).sort((a, b) => b.gesamt - a.gesamt);
+  const w = window.open('', '_blank');
+  if (!w) { toast('Das Druckfenster wurde blockiert – bitte Pop-ups für diese Seite erlauben.', true); return; }
+  w.document.write(`<!DOCTYPE html><html lang="de"><head><meta charset="utf-8"><title>${esc(t.name)} – Skatliste</title><style>
+    body { font-family: "Segoe UI", Arial, sans-serif; margin: 18mm 14mm; color: #000; }
+    h1 { font-size: 20px; margin: 0 0 2px; } .kopf { font-size: 13px; color: #333; margin-bottom: 14px; }
+    table { border-collapse: collapse; width: 100%; font-size: 12px; margin-bottom: 18px; }
+    th, td { border: 1px solid #999; padding: 3px 6px; text-align: right; }
+    th:nth-child(2), td:nth-child(2) { text-align: left; } th { background: #eee; }
+    tfoot td { font-weight: 700; } .nb { color: #777; } tr.verl td.wert { color: #b00; }
+    .rang td:first-child, .rang th:first-child { text-align: center; width: 40px; } .rang td:nth-child(2) { text-align: left; }
+  </style></head><body>
+    <h1>${esc(t.name)} – Skatliste (Seeger-Fabian)</h1>
+    <div class="kopf">1. Sintherner Skatclub · Skat-Online · ${new Date().toLocaleDateString('de-DE')} · ${t.plaetze}er-Tisch · ${(t.liste || []).length} Spiele${t.status === 'beendet' ? '' : ' (Liste läuft noch)'}</div>
+    <table class="rang"><thead><tr><th>Platz</th><th>Spieler</th><th>Spielpunkte</th><th>gew.</th><th>verl.</th><th>Gesamt</th></tr></thead><tbody>
+      ${rang.map((x, i) => `<tr><td>${i + 1}</td><td>${esc(x.name)}</td><td>${x.spielpunkte}</td><td>${x.gewonnen}</td><td>${x.verloren}</td><td><b>${x.gesamt}</b></td></tr>`).join('')}
+    </tbody></table>
+    ${$('listeBox').innerHTML}
+  </body></html>`);
+  w.document.close();
+  w.focus();
+  setTimeout(() => w.print(), 300);
+};
 
 // Neuer Stich → kurz in der Mitte stehen lassen; neues Spiel → Ansage zurücksetzen
 let letzteSpielNr = null;
+const ohneGesehen = t => JSON.stringify(Object.assign({}, t, { gesehen: null }));
 function tischGeaendert(neu) {
   const alt = tisch;
   tisch = neu;
+  if (alt && ohneGesehen(alt) === ohneGesehen(neu)) {   // nur ein Lebenszeichen
+    renderSitze(positionen()); verbindeSitzKnoepfe();
+    return;
+  }
+  if (!DEMO && meinPlatz() >= 0 && neu.amZug === meinPlatz() && (!alt || alt.amZug !== meinPlatz())) zugTon();
   if (neu.letzterStich && neu.letzterStich.nr !== letzterStichNr && (!alt || alt.spielNr === neu.spielNr)) {
     zeigeStichBis = Date.now() + 1600;
     setTimeout(render, 1650);
@@ -1128,6 +1247,18 @@ async function starteOnline() {
     if (rolle.admin) $('bilderStatus').textContent = `${Object.keys(altenburgerBilder).length} von 32 Bildern vorhanden.`;
   }
 
+  $('btnMitgliedNeu').onclick = async () => {
+    const wer = $('neuMitgliedWer').value.trim();
+    if (!wer) { toast('Bitte E-Mail-Adresse oder UID eingeben.', true); $('neuMitgliedWer').focus(); return; }
+    $('btnMitgliedNeu').disabled = true;
+    try {
+      const r = await backend.aktion({ typ: 'mitgliedHinzufuegen', wer, name: $('neuMitgliedName').value.trim() });
+      toast((r.name || r.email || r.uid) + ' freigeschaltet');
+      $('neuMitgliedWer').value = ''; $('neuMitgliedName').value = '';
+    } catch (e) { toast(e.message, true); }
+    finally { $('btnMitgliedNeu').disabled = false; }
+  };
+
   $('bilderDateien').onchange = async e => {
     const dateien = [...e.target.files];
     const muster = /^(Kreuz|Pik|Herz|Karo)-(7|8|9|10|B|D|K|A)\.png$/i;
@@ -1253,7 +1384,13 @@ async function starteOnline() {
       setzeMeineKarten(snap.exists() ? (snap.data().karten || []) : []);
       render();
     }, () => {});
-    abmeldenTisch = () => { abo1(); abo2(); };
+    // Lebenszeichen alle 30 s (für die Offline-Anzeige bei den Mitspielern)
+    const ping = () => {
+      if (tisch && tischId && meinPlatz() >= 0 && tisch.status !== 'beendet') callable({ typ: 'ping', tischId }).catch(() => {});
+    };
+    const pingTakt = setInterval(ping, 30000);
+    setTimeout(ping, 2500);
+    abmeldenTisch = () => { abo1(); abo2(); clearInterval(pingTakt); };
     if (beitreten) {
       const snap = await fs.getDoc(ref).catch(() => null);
       const t = snap && snap.exists() ? snap.data() : null;

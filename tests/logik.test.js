@@ -85,7 +85,7 @@ function spieleListe(plaetze) {
       if (!e.eingepasst) {
         assert.strictEqual(e.augenAllein === null || e.augenAllein + e.augenGegner === 120, true);
       }
-      S.aktion(welt, zufall([0, 1, 2].slice(0, plaetze)), { typ: 'weiter' });
+      for (let q = 0; q < plaetze; q++) if (welt.tisch.phase === 'spielende') S.aktion(welt, q, { typ: 'bereit' });
       continue;
     }
     const p = t.amZug;

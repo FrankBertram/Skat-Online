@@ -675,7 +675,6 @@
       case 'zeigen': kartenZeigen(welt, platz); break;
       case 'zustimmen': anspruchBeantworten(welt, platz, a.ja === true); break;
       case 'aufgeben': aufgeben(welt, platz); break;
-      case 'weiter': naechstesSpiel(welt); break;
       case 'bereit': bereitMelden(welt, platz, true); break;
       case 'pause': bereitMelden(welt, platz, false); break;
       default: fehler('Unbekannte Aktion: ' + a.typ);

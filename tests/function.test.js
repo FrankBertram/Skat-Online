@@ -93,9 +93,18 @@ test('Function: Tisch anlegen, beitreten, Geheimnisse bleiben getrennt', async (
       const k = S.gueltigeKarten(hand(u(p)), x.stich, 'grand')[0];
       await rufe(u(p), { typ: 'karte', tischId, karte: k });
     }
-    if (tisch().phase === 'spielende') await rufe(u(0), { typ: 'weiter', tischId });
+    for (let q = 0; q < 4; q++) if (tisch().phase === 'spielende') await rufe(u(q), { typ: 'bereit', tischId });
   }
   assert.strictEqual(tisch().phase, 'beendet');
   assert.strictEqual(tisch().liste.length, 4);
+  await assert.rejects(rufe('u0', { typ: 'bereit', tischId }), /beendet/);
   await assert.rejects(rufe('u0', { typ: 'weiter', tischId }), /beendet/);
+
+  // Lebenszeichen schreibt nur „gesehen“
+  const neu = await rufe('u0', { typ: 'tischAnlegen', name: 'Ping', plaetze: 3 });
+  await rufe('u0', { typ: 'ping', tischId: neu.tischId });
+  const g = daten.get('skatonline_tische/' + neu.tischId).gesehen;
+  assert.ok(g && g[0] > 0);
+  // Mitglieder freischalten dürfen nur Spielleiter
+  await assert.rejects(rufe('u1', { typ: 'mitgliedHinzufuegen', wer: 'x@example.org' }), /Nur Spielleiter/);
 });

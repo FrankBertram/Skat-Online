@@ -11,6 +11,7 @@
 const { onCall, HttpsError } = require('firebase-functions/v2/https');
 const { initializeApp } = require('firebase-admin/app');
 const { getFirestore } = require('firebase-admin/firestore');
+const { getAuth } = require('firebase-admin/auth');
 const crypto = require('crypto');
 const S = require('./skatlogik.js');
 
@@ -45,6 +46,46 @@ async function hatZugang(uid) {
   return ok;
 }
 
+// Verwalter: Admin und Sintherner Spielleiter (dürfen Mitglieder freischalten)
+async function istVerwalter(uid) {
+  if (uid === ADMIN_UID) return true;
+  const sl = await db.collection('spielleiter').doc(uid).get();
+  return sl.exists && (sl.data().verein || 'sinthern') === 'sinthern';
+}
+
+// Mitglied per UID oder E-Mail freischalten (das Konto muss sich schon einmal angemeldet haben)
+async function mitgliedHinzufuegen(uid, d) {
+  if (!(await istVerwalter(uid))) throw new HttpsError('permission-denied', 'Nur Spielleiter können Mitglieder freischalten.');
+  const eingabe = String(d.wer || '').trim();
+  if (!eingabe) throw new HttpsError('invalid-argument', 'Bitte UID oder E-Mail-Adresse angeben.');
+  let nutzer;
+  try {
+    nutzer = eingabe.includes('@') ? await getAuth().getUserByEmail(eingabe.toLowerCase()) : await getAuth().getUser(eingabe);
+  } catch (e) {
+    throw new HttpsError('not-found', 'Kein Konto zu „' + eingabe + '“ gefunden – die Person muss sich zuerst einmal auf der Seite anmelden.');
+  }
+  const name = String(d.name || nutzer.displayName || '').trim().slice(0, 40);
+  await db.collection('skatonline_mitglieder').doc(nutzer.uid).set({
+    name, email: nutzer.email || '', freigeschaltetAm: Date.now(), von: uid
+  });
+  await db.collection('skatonline_antraege').doc(nutzer.uid).delete().catch(() => {});
+  return { ok: true, uid: nutzer.uid, name, email: nutzer.email || '' };
+}
+
+// Alte Tische aufräumen: seit 30 Tagen unverändert → samt Händen und geheimem Stand löschen.
+// Läuft nebenbei beim Anlegen eines Tisches (kein eigener Zeitplan nötig).
+const AUFRAEUM_TAGE = 30;
+async function alteTischeLoeschen() {
+  try {
+    const grenze = Date.now() - AUFRAEUM_TAGE * 24 * 3600 * 1000;
+    const alt = await db.collection(TISCHE).where('aktualisiertMs', '<', grenze).limit(10).get();
+    for (const doc of alt.docs) await db.recursiveDelete(doc.ref);
+    if (alt.size) console.log('Alte Tische gelöscht:', alt.size);
+  } catch (e) {
+    console.warn('Aufräumen alter Tische fehlgeschlagen', e && e.message);
+  }
+}
+
 function spielerName(d, token) {
   return String(d.spielerName || token.name || (token.email || '').split('@')[0] || 'Spieler').trim().slice(0, 20);
 }
@@ -61,7 +102,12 @@ exports.skatAktion = onCall({ region: 'europe-west3', maxInstances: 10, concurre
     throw new HttpsError('permission-denied', 'Dein Konto ist für Skat-Online noch nicht freigeschaltet.');
   }
   try {
-    if (d.typ === 'tischAnlegen') return await tischAnlegen(uid, d, token);
+    if (d.typ === 'mitgliedHinzufuegen') return await mitgliedHinzufuegen(uid, d);
+    if (d.typ === 'tischAnlegen') {
+      const r = await tischAnlegen(uid, d, token);
+      await alteTischeLoeschen();
+      return r;
+    }
     if (!d.tischId) throw new HttpsError('invalid-argument', 'Tisch fehlt.');
     return await db.runTransaction(tx => tischAktion(tx, uid, d, token));
   } catch (e) {
@@ -99,6 +145,14 @@ async function tischAktion(tx, uid, d, token) {
   const snap = await tx.get(ref);
   if (!snap.exists) throw new HttpsError('not-found', 'Tisch ' + tischId + ' gibt es nicht.');
   const tisch = snap.data();
+  // Lebenszeichen: nur „zuletzt gesehen“ des Platzes fortschreiben (für die Offline-Anzeige)
+  if (d.typ === 'ping') {
+    const p = tisch.spieler.findIndex(s => s && s.uid === uid);
+    if (p < 0 || tisch.status === 'beendet') return { ok: true };
+    tisch.gesehen = Object.assign({}, tisch.gesehen, { [p]: Date.now() });
+    tx.set(ref, tisch);
+    return { ok: true };
+  }
   const geheimSnap = await tx.get(geheimRef);
   const sitze = tisch.spieler.map(s => (s ? s.uid : null));
   const handSnaps = await Promise.all(sitze.map(u => (u ? tx.get(ref.collection('haende').doc(u)) : null)));
